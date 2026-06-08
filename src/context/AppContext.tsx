@@ -34,6 +34,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     LocalDbService.init();
+    
+    // Initialize real-time Firestore synchronization
+    LocalDbService.initFirestore(() => {
+      setRefreshKey(k => k + 1);
+    });
+
     const saved = LocalDbService.getCurrentUser();
     if (saved) setCurrentUserState(saved);
     setMounted(true);

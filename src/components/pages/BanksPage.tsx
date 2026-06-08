@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 import { LocalDbService } from '@/services/LocalDbService';
 import { ExportService } from '@/services/ExportService';
 import { Bank, BankStatus } from '@/types';
@@ -151,6 +152,7 @@ function BankModal({ onClose, onSave, bank }: { onClose: () => void; onSave: (b:
 }
 
 export default function BanksPage() {
+  const { refreshKey } = useApp();
   const [banks, setBanks] = useState<Bank[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editBank, setEditBank] = useState<Bank | null>(null);
@@ -158,7 +160,7 @@ export default function BanksPage() {
   const [filterStatus, setFilterStatus] = useState('');
 
   const load = () => setBanks(LocalDbService.getBanks());
-  useEffect(load, []);
+  useEffect(load, [refreshKey]);
 
   const filtered = banks.filter(b => {
     if (filterStatus && b.status !== filterStatus) return false;

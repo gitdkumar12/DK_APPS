@@ -5,7 +5,7 @@ import { User, LeaveQuota, LeaveRequest, Holiday, LeaveType } from '@/types';
 import { Calendar, UserCheck, UserX, Plus, Check, X, ShieldAlert } from 'lucide-react';
 
 export default function LeavesPage() {
-  const { currentUser, isAdmin } = useApp();
+  const { currentUser, isAdmin, refreshKey } = useApp();
   const [activeTab, setActiveTab] = useState<'my-leaves' | 'requests' | 'holidays' | 'quotas'>('my-leaves');
   
   const [myQuota, setMyQuota] = useState<LeaveQuota | null>(null);
@@ -33,7 +33,7 @@ export default function LeavesPage() {
     if (isAdmin) {
       setActiveTab('requests');
     }
-  }, [isAdmin, currentUser]);
+  }, [isAdmin, currentUser, refreshKey]);
 
   const refreshData = () => {
     if (!currentUser) return;

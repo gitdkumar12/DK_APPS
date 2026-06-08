@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 import { LocalDbService } from '@/services/LocalDbService';
 import { ExportService } from '@/services/ExportService';
 import { User } from '@/types';
@@ -110,6 +111,7 @@ function EmployeeModal({ onClose, onSave, user }: { onClose: () => void; onSave:
 }
 
 export default function EmployeesPage() {
+  const { refreshKey } = useApp();
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -117,7 +119,7 @@ export default function EmployeesPage() {
   const metrics = LocalDbService.getEmployeeMetrics();
 
   const load = () => setUsers(LocalDbService.getUsers());
-  useEffect(load, []);
+  useEffect(load, [refreshKey]);
 
   const handleSave = (data: Partial<User>) => {
     if (editUser) {

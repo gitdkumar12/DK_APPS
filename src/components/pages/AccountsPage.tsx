@@ -46,7 +46,7 @@ const CustomTooltipPayroll = ({ active, payload, label }: any) => {
 };
 
 export default function AccountsPage() {
-  const { currentUser, isAdmin } = useApp();
+  const { currentUser, isAdmin, refreshKey } = useApp();
   const [employees, setEmployees] = useState<User[]>([]);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -68,7 +68,7 @@ export default function AccountsPage() {
     
     setEmployees(users);
     setAccounts(accs);
-  }, [currentUser, isAdmin]);
+  }, [currentUser, isAdmin, refreshKey]);
 
   const handleSelectUser = (user: User, accs: AccountRecord[] = accounts) => {
     setSelectedUser(user);

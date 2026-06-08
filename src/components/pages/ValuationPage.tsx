@@ -431,7 +431,7 @@ function ValuationModal({
 }
 
 export default function ValuationPage() {
-  const { currentUser, isAdmin, refresh } = useApp();
+  const { currentUser, isAdmin, refresh, refreshKey } = useApp();
   const [cases, setCases] = useState<ValuationCase[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
@@ -450,7 +450,7 @@ export default function ValuationPage() {
     setEmployees(LocalDbService.getUsers().filter(u => u.role === 'EMPLOYEE'));
   };
 
-  useEffect(load, [currentUser, isAdmin]);
+  useEffect(load, [currentUser, isAdmin, refreshKey]);
 
   const filtered = cases.filter(v => {
     if (filterBank && v.bankId !== filterBank) return false;

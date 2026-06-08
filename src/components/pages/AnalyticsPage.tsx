@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 import { LocalDbService } from '@/services/LocalDbService';
 import { ExportService } from '@/services/ExportService';
 import { RevenueRecord, EmployeeMetrics, LeaveRequest } from '@/types';
@@ -41,6 +42,7 @@ const CustomTooltipRevenue = ({ active, payload, label }: { active?: boolean; pa
 };
 
 export default function AnalyticsPage() {
+  const { refreshKey } = useApp();
   const [revenue, setRevenue] = useState<RevenueRecord[]>([]);
   const [metrics, setMetrics] = useState<EmployeeMetrics[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
@@ -51,7 +53,7 @@ export default function AnalyticsPage() {
     setRevenue(LocalDbService.getRevenue());
     setMetrics(LocalDbService.getEmployeeMetrics());
     setLeaveRequests(LocalDbService.getLeaveRequests());
-  }, []);
+  }, [refreshKey]);
 
   const periodMap: Record<Period, number> = { '3M': 3, '6M': 6, '1Y': 8 };
   const displayRevenue = revenue.slice(-periodMap[period]);

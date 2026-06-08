@@ -1,8 +1,5 @@
 // ============================================================
-// GT CONSULTANCY RAIPUR - LOCAL DATABASE SERVICE
-// Phase 1 — localStorage-backed data persistence layer
-// Phase 2 ready: Swap implementations with REST/GraphQL calls
-//                without changing any consuming UI components.
+// GT CONSULTANCY RAIPUR - FIREBASE FIRESTORE DATABASE SERVICE
 // ============================================================
 
 import {
@@ -11,6 +8,16 @@ import {
   ExportFilter, TaskStatus, ValuationStatus, TicketComment,
   AccountRecord, LeaveQuota, LeaveRequest, Holiday, LeaveStatus
 } from '@/types';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  writeBatch 
+} from 'firebase/firestore';
 
 // ─── Seed Data (mirrors GTDS_WORKSHEET.xlsx) ─────────────────
 
@@ -347,7 +354,7 @@ const SEED_ACCOUNTS: AccountRecord[] = [
   }
 ];
 
-// ─── Keys ────────────────────────────────────────────────────
+// ─── Firestore Keys ──────────────────────────────────────────
 const KEYS = {
   users: 'gtc_users',
   projects: 'gtc_projects',
@@ -360,19 +367,29 @@ const KEYS = {
   leaveRequests: 'gtc_leave_requests',
   holidays: 'gtc_holidays',
   currentUser: 'gtc_current_user',
-  initialized: 'gtc_initialized',
-  schemaVersion: 'gtc_schema_v',
 };
 
-const SCHEMA_VERSION = '9'; // bumped to 9 for Bank branches field
+// ─── In-Memory Cache Variables ──────────────────────────────
+let cachedUsers: User[] = [];
+let cachedProjects: Project[] = [];
+let cachedTasks: Task[] = [];
+let cachedBanks: Bank[] = [];
+let cachedValuations: ValuationCase[] = [];
+let cachedRevenue: RevenueRecord[] = [];
+let cachedAccounts: AccountRecord[] = [];
+let cachedLeaveQuotas: LeaveQuota[] = [];
+let cachedLeaveRequests: LeaveRequest[] = [];
+let cachedHolidays: Holiday[] = [];
 
-// ─── Helper ───────────────────────────────────────────────────
-function store<T>(key: string, data: T): void {
+let isSyncInitialized = false;
+
+// ─── Helper for Client-Side Session persistence ──────────────
+function storeSession<T>(key: string, data: T): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-function load<T>(key: string): T | null {
+function loadSession<T>(key: string): T | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem(key);
   return raw ? JSON.parse(raw) : null;
@@ -380,49 +397,108 @@ function load<T>(key: string): T | null {
 
 // ─── Service Class ────────────────────────────────────────────
 export class LocalDbService {
+  
+  // Legacy local initialization (keeps session persistence working)
   static init(): void {
     if (typeof window === 'undefined') return;
-    // Re-seed if schema version changed (e.g. passwords added)
-    const storedVersion = localStorage.getItem(KEYS.schemaVersion);
-    if (storedVersion !== SCHEMA_VERSION) {
-      localStorage.removeItem(KEYS.initialized);
-      localStorage.removeItem(KEYS.currentUser);
-      localStorage.removeItem(KEYS.users);
-      localStorage.removeItem(KEYS.projects);
-      localStorage.removeItem(KEYS.tasks);
-      localStorage.removeItem(KEYS.banks);
-      localStorage.removeItem(KEYS.valuations);
-      localStorage.removeItem(KEYS.revenue);
-      localStorage.removeItem(KEYS.accounts);
-      localStorage.removeItem(KEYS.leaveQuotas);
-      localStorage.removeItem(KEYS.leaveRequests);
-      localStorage.removeItem(KEYS.holidays);
-    }
-    if (localStorage.getItem(KEYS.initialized)) return;
-    store(KEYS.users, SEED_USERS);
-    store(KEYS.projects, SEED_PROJECTS);
-    store(KEYS.tasks, SEED_TASKS);
-    store(KEYS.banks, SEED_BANKS);
-    store(KEYS.valuations, SEED_VALUATIONS);
-    store(KEYS.revenue, SEED_REVENUE);
-    // Initialize collections
-    store(KEYS.accounts, SEED_ACCOUNTS);
-    if (!localStorage.getItem(KEYS.leaveQuotas)) store(KEYS.leaveQuotas, []);
-    if (!localStorage.getItem(KEYS.leaveRequests)) store(KEYS.leaveRequests, []);
-    if (!localStorage.getItem(KEYS.holidays)) store(KEYS.holidays, [
-      { id: 'hol_1', date: '2026-01-26', name: 'Republic Day', type: 'PUBLIC' },
-      { id: 'hol_2', date: '2026-03-25', name: 'Holi', type: 'PUBLIC' },
-      { id: 'hol_3', date: '2026-08-15', name: 'Independence Day', type: 'PUBLIC' },
-      { id: 'hol_4', date: '2026-10-02', name: 'Gandhi Jayanti', type: 'PUBLIC' },
-      { id: 'hol_5', date: '2026-11-01', name: 'Diwali', type: 'PUBLIC' },
-      { id: 'hol_6', date: '2026-12-25', name: 'Christmas', type: 'PUBLIC' },
-    ]);
-
-    store(KEYS.initialized, true);
-    store(KEYS.schemaVersion, SCHEMA_VERSION);
   }
 
-  // ── Auth ──────────────────────────────────────────────────
+  // ── Firestore Sync & Auto-Seeding ──────────────────────────
+  
+  static async seedDatabaseIfEmpty(): Promise<void> {
+    try {
+      const usersSnap = await getDocs(collection(db, KEYS.users));
+      if (usersSnap.empty) {
+        console.log('[Firestore] Database is empty. Auto-seeding default worksheet data...');
+        const batch = writeBatch(db);
+        
+        SEED_USERS.forEach(u => batch.set(doc(db, KEYS.users, u.id), u));
+        SEED_PROJECTS.forEach(p => batch.set(doc(db, KEYS.projects, p.id), p));
+        SEED_TASKS.forEach(t => batch.set(doc(db, KEYS.tasks, t.id), t));
+        SEED_BANKS.forEach(b => batch.set(doc(db, KEYS.banks, b.id), b));
+        SEED_VALUATIONS.forEach(v => batch.set(doc(db, KEYS.valuations, v.id), v));
+        SEED_REVENUE.forEach((r, idx) => batch.set(doc(db, KEYS.revenue, `rev_${idx}`), r));
+        SEED_ACCOUNTS.forEach(a => batch.set(doc(db, KEYS.accounts, a.id), a));
+        
+        const defaultHolidays = [
+          { id: 'hol_1', date: '2026-01-26', name: 'Republic Day', type: 'PUBLIC' as const },
+          { id: 'hol_2', date: '2026-03-25', name: 'Holi', type: 'PUBLIC' as const },
+          { id: 'hol_3', date: '2026-08-15', name: 'Independence Day', type: 'PUBLIC' as const },
+          { id: 'hol_4', date: '2026-10-02', name: 'Gandhi Jayanti', type: 'PUBLIC' as const },
+          { id: 'hol_5', date: '2026-11-01', name: 'Diwali', type: 'PUBLIC' as const },
+          { id: 'hol_6', date: '2026-12-25', name: 'Christmas', type: 'PUBLIC' as const },
+        ];
+        defaultHolidays.forEach(h => batch.set(doc(db, KEYS.holidays, h.id), h));
+        
+        await batch.commit();
+        console.log('[Firestore] Database successfully seeded!');
+      }
+    } catch (err) {
+      console.error('[Firestore] Error during database seeding:', err);
+    }
+  }
+
+  static initFirestore(onSync: () => void): void {
+    if (typeof window === 'undefined' || isSyncInitialized) return;
+    isSyncInitialized = true;
+
+    this.seedDatabaseIfEmpty().then(() => {
+      console.log('[Firestore] Listening to real-time database changes...');
+
+      onSnapshot(collection(db, KEYS.users), (snap) => {
+        cachedUsers = snap.docs.map(d => d.data() as User);
+        onSync();
+      }, err => console.error('Users sync error:', err));
+
+      onSnapshot(collection(db, KEYS.projects), (snap) => {
+        cachedProjects = snap.docs.map(d => d.data() as Project);
+        onSync();
+      }, err => console.error('Projects sync error:', err));
+
+      onSnapshot(collection(db, KEYS.tasks), (snap) => {
+        cachedTasks = snap.docs.map(d => d.data() as Task);
+        onSync();
+      }, err => console.error('Tasks sync error:', err));
+
+      onSnapshot(collection(db, KEYS.banks), (snap) => {
+        cachedBanks = snap.docs.map(d => d.data() as Bank);
+        onSync();
+      }, err => console.error('Banks sync error:', err));
+
+      onSnapshot(collection(db, KEYS.valuations), (snap) => {
+        cachedValuations = snap.docs.map(d => d.data() as ValuationCase);
+        onSync();
+      }, err => console.error('Valuations sync error:', err));
+
+      onSnapshot(collection(db, KEYS.revenue), (snap) => {
+        cachedRevenue = snap.docs.map(d => d.data() as RevenueRecord);
+        onSync();
+      }, err => console.error('Revenue sync error:', err));
+
+      onSnapshot(collection(db, KEYS.accounts), (snap) => {
+        cachedAccounts = snap.docs.map(d => d.data() as AccountRecord);
+        onSync();
+      }, err => console.error('Accounts sync error:', err));
+
+      onSnapshot(collection(db, KEYS.leaveQuotas), (snap) => {
+        cachedLeaveQuotas = snap.docs.map(d => d.data() as LeaveQuota);
+        onSync();
+      }, err => console.error('LeaveQuotas sync error:', err));
+
+      onSnapshot(collection(db, KEYS.leaveRequests), (snap) => {
+        cachedLeaveRequests = snap.docs.map(d => d.data() as LeaveRequest);
+        onSync();
+      }, err => console.error('LeaveRequests sync error:', err));
+
+      onSnapshot(collection(db, KEYS.holidays), (snap) => {
+        cachedHolidays = snap.docs.map(d => d.data() as Holiday);
+        onSync();
+      }, err => console.error('Holidays sync error:', err));
+    });
+  }
+
+  // ── Auth & Local Session ───────────────────────────────────
+  
   static login(email: string, password: string): { user: User | null; error: string } {
     const users = this.getUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -433,11 +509,11 @@ export class LocalDbService {
   }
 
   static getCurrentUser(): User | null {
-    return load<User>(KEYS.currentUser);
+    return loadSession<User>(KEYS.currentUser);
   }
 
   static setCurrentUser(user: User): void {
-    store(KEYS.currentUser, user);
+    storeSession(KEYS.currentUser, user);
   }
 
   static logout(): void {
@@ -445,44 +521,47 @@ export class LocalDbService {
     localStorage.removeItem(KEYS.currentUser);
   }
 
+  // ── Users ──────────────────────────────────────────────────
+  
   static getUsers(): User[] {
-    return load<User[]>(KEYS.users) ?? [];
+    return cachedUsers.length > 0 ? cachedUsers : SEED_USERS;
   }
 
   static addUser(user: User): void {
-    const users = this.getUsers();
-    users.push(user);
-    store(KEYS.users, users);
+    cachedUsers = [...cachedUsers.filter(u => u.id !== user.id), user];
+    setDoc(doc(db, KEYS.users, user.id), user).catch(err => console.error('Error adding user:', err));
   }
 
   static updateUser(updated: User): void {
-    const users = this.getUsers().map(u => u.id === updated.id ? updated : u);
-    store(KEYS.users, users);
+    cachedUsers = cachedUsers.map(u => u.id === updated.id ? updated : u);
+    setDoc(doc(db, KEYS.users, updated.id), updated).catch(err => console.error('Error updating user:', err));
   }
 
   // ── Projects ──────────────────────────────────────────────
+  
   static getProjects(): Project[] {
-    return load<Project[]>(KEYS.projects) ?? [];
+    return cachedProjects.length > 0 ? cachedProjects : SEED_PROJECTS;
   }
 
   static addProject(project: Project): void {
-    const projects = this.getProjects();
-    projects.push(project);
-    store(KEYS.projects, projects);
+    cachedProjects = [...cachedProjects.filter(p => p.id !== project.id), project];
+    setDoc(doc(db, KEYS.projects, project.id), project).catch(err => console.error('Error adding project:', err));
   }
 
   static updateProject(updated: Project): void {
-    const projects = this.getProjects().map(p => p.id === updated.id ? updated : p);
-    store(KEYS.projects, projects);
+    cachedProjects = cachedProjects.map(p => p.id === updated.id ? updated : p);
+    setDoc(doc(db, KEYS.projects, updated.id), updated).catch(err => console.error('Error updating project:', err));
   }
 
   static deleteProject(id: string): void {
-    store(KEYS.projects, this.getProjects().filter(p => p.id !== id));
+    cachedProjects = cachedProjects.filter(p => p.id !== id);
+    deleteDoc(doc(db, KEYS.projects, id)).catch(err => console.error('Error deleting project:', err));
   }
 
   // ── Tasks ─────────────────────────────────────────────────
+  
   static getTasks(userId?: string, role?: string): Task[] {
-    const tasks = load<Task[]>(KEYS.tasks) ?? [];
+    const tasks = cachedTasks.length > 0 ? cachedTasks : SEED_TASKS;
     if (role === 'EMPLOYEE' && userId) {
       return tasks.filter(t => t.assignedTo === userId);
     }
@@ -490,50 +569,58 @@ export class LocalDbService {
   }
 
   static addTask(task: Task): void {
-    const tasks = load<Task[]>(KEYS.tasks) ?? [];
-    tasks.push(task);
-    store(KEYS.tasks, tasks);
+    cachedTasks = [...cachedTasks.filter(t => t.id !== task.id), task];
+    setDoc(doc(db, KEYS.tasks, task.id), task).catch(err => console.error('Error adding task:', err));
   }
 
   static updateTask(updated: Task): void {
-    const tasks = (load<Task[]>(KEYS.tasks) ?? []).map(t => t.id === updated.id ? updated : t);
-    store(KEYS.tasks, tasks);
+    cachedTasks = cachedTasks.map(t => t.id === updated.id ? updated : t);
+    setDoc(doc(db, KEYS.tasks, updated.id), updated).catch(err => console.error('Error updating task:', err));
   }
 
   static deleteTask(id: string): void {
-    store(KEYS.tasks, (load<Task[]>(KEYS.tasks) ?? []).filter(t => t.id !== id));
+    cachedTasks = cachedTasks.filter(t => t.id !== id);
+    deleteDoc(doc(db, KEYS.tasks, id)).catch(err => console.error('Error deleting task:', err));
   }
 
   static closeTask(id: string, adminId: string): void {
-    const tasks = (load<Task[]>(KEYS.tasks) ?? []).map(t =>
-      t.id === id ? { ...t, status: 'CLOSED' as TaskStatus, closedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : t
-    );
-    store(KEYS.tasks, tasks);
+    const task = (cachedTasks.length > 0 ? cachedTasks : SEED_TASKS).find(t => t.id === id);
+    if (!task) return;
+    const updated: Task = {
+      ...task,
+      status: 'CLOSED' as TaskStatus,
+      closedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.updateTask(updated);
     void adminId;
   }
 
   // ── Banks ─────────────────────────────────────────────────
+  
   static getBanks(): Bank[] {
-    return load<Bank[]>(KEYS.banks) ?? [];
+    return cachedBanks.length > 0 ? cachedBanks : SEED_BANKS;
   }
 
   static addBank(bank: Bank): void {
-    const banks = this.getBanks();
-    banks.push(bank);
-    store(KEYS.banks, banks);
+    cachedBanks = [...cachedBanks.filter(b => b.id !== bank.id), bank];
+    setDoc(doc(db, KEYS.banks, bank.id), bank).catch(err => console.error('Error adding bank:', err));
   }
 
   static updateBank(updated: Bank): void {
-    store(KEYS.banks, this.getBanks().map(b => b.id === updated.id ? updated : b));
+    cachedBanks = cachedBanks.map(b => b.id === updated.id ? updated : b);
+    setDoc(doc(db, KEYS.banks, updated.id), updated).catch(err => console.error('Error updating bank:', err));
   }
 
   static deleteBank(id: string): void {
-    store(KEYS.banks, this.getBanks().filter(b => b.id !== id));
+    cachedBanks = cachedBanks.filter(b => b.id !== id);
+    deleteDoc(doc(db, KEYS.banks, id)).catch(err => console.error('Error deleting bank:', err));
   }
 
   // ── Valuations ────────────────────────────────────────────
+  
   static getValuations(userId?: string, role?: string): ValuationCase[] {
-    const vals = load<ValuationCase[]>(KEYS.valuations) ?? [];
+    const vals = cachedValuations.length > 0 ? cachedValuations : SEED_VALUATIONS;
     if (role === 'EMPLOYEE' && userId) {
       return vals.filter(v => v.assignedTo === userId);
     }
@@ -541,35 +628,39 @@ export class LocalDbService {
   }
 
   static addValuation(valuation: ValuationCase): void {
-    const vals = this.getValuations();
-    vals.push(valuation);
-    store(KEYS.valuations, vals);
+    cachedValuations = [...cachedValuations.filter(v => v.id !== valuation.id), valuation];
+    setDoc(doc(db, KEYS.valuations, valuation.id), valuation).catch(err => console.error('Error adding valuation:', err));
   }
 
   static updateValuation(updated: ValuationCase): void {
-    store(KEYS.valuations, this.getValuations().map(v => v.id === updated.id ? updated : v));
+    cachedValuations = cachedValuations.map(v => v.id === updated.id ? updated : v);
+    setDoc(doc(db, KEYS.valuations, updated.id), updated).catch(err => console.error('Error updating valuation:', err));
   }
 
   static advanceValuationStatus(id: string, newStatus: ValuationStatus): void {
+    const vals = this.getValuations();
+    const v = vals.find(x => x.id === id);
+    if (!v) return;
+    
     const now = new Date().toISOString().split('T')[0];
-    const vals = (load<ValuationCase[]>(KEYS.valuations) ?? []).map(v => {
-      if (v.id !== id) return v;
-      const update: Partial<ValuationCase> = { status: newStatus, updatedAt: new Date().toISOString() };
-      if (newStatus === 'SITE_INSPECTED') update.siteInspectedAt = now;
-      if (newStatus === 'DRAFT_READY') update.draftReadyAt = now;
-      if (newStatus === 'DISPATCHED_TO_BANK') update.dispatchedAt = now;
-      if (newStatus === 'FEES_SETTLED') { update.settledAt = now; update.feesSettled = true; }
-      return { ...v, ...update };
-    });
-    store(KEYS.valuations, vals);
+    const update: Partial<ValuationCase> = { status: newStatus, updatedAt: new Date().toISOString() };
+    if (newStatus === 'SITE_INSPECTED') update.siteInspectedAt = now;
+    if (newStatus === 'DRAFT_READY') update.draftReadyAt = now;
+    if (newStatus === 'DISPATCHED_TO_BANK') update.dispatchedAt = now;
+    if (newStatus === 'FEES_SETTLED') { update.settledAt = now; update.feesSettled = true; }
+    
+    const updated: ValuationCase = { ...v, ...update };
+    this.updateValuation(updated);
   }
 
   // ── Revenue ───────────────────────────────────────────────
+  
   static getRevenue(): RevenueRecord[] {
-    return load<RevenueRecord[]>(KEYS.revenue) ?? [];
+    return cachedRevenue.length > 0 ? cachedRevenue : SEED_REVENUE;
   }
 
   // ── Analytics ─────────────────────────────────────────────
+  
   static getDashboardStats(userId?: string, role?: string): DashboardStats {
     const tasks = this.getTasks(userId, role);
     const valuations = this.getValuations(userId, role);
@@ -592,8 +683,8 @@ export class LocalDbService {
 
   static getEmployeeMetrics(): EmployeeMetrics[] {
     const employees = this.getUsers().filter(u => u.role === 'EMPLOYEE');
-    const allTasks = load<Task[]>(KEYS.tasks) ?? [];
-    const allVals = load<ValuationCase[]>(KEYS.valuations) ?? [];
+    const allTasks = this.getTasks();
+    const allVals = this.getValuations();
     const now = new Date().toISOString().split('T')[0];
 
     return employees.map(emp => ({
@@ -609,8 +700,8 @@ export class LocalDbService {
   }
 
   static getRecentComments(userId?: string, role?: string, limit = 10): { type: 'task' | 'valuation'; targetId: string; targetName: string; comment: TicketComment }[] {
-    const tasks = load<Task[]>(KEYS.tasks) ?? [];
-    const vals = load<ValuationCase[]>(KEYS.valuations) ?? [];
+    const tasks = this.getTasks();
+    const vals = this.getValuations();
     
     const activity: { type: 'task' | 'valuation'; targetId: string; targetName: string; comment: TicketComment }[] = [];
     
@@ -642,7 +733,7 @@ export class LocalDbService {
   }
 
   static getValuationDailyPerformance(): { date: string; count: number; earnings: number }[] {
-    const vals = load<ValuationCase[]>(KEYS.valuations) ?? [];
+    const vals = this.getValuations();
     const performanceMap: Record<string, { count: number; earnings: number }> = {};
     
     vals.forEach(v => {
@@ -662,8 +753,9 @@ export class LocalDbService {
   }
 
   // ── Filtered Exports ──────────────────────────────────────
+  
   static getFilteredTasks(filter: ExportFilter): Task[] {
-    let tasks = load<Task[]>(KEYS.tasks) ?? [];
+    let tasks = this.getTasks();
     if (filter.employeeId) tasks = tasks.filter(t => t.assignedTo === filter.employeeId);
     if (filter.projectId) tasks = tasks.filter(t => t.projectId === filter.projectId);
     if (filter.status) tasks = tasks.filter(t => t.status === filter.status);
@@ -673,7 +765,7 @@ export class LocalDbService {
   }
 
   static getFilteredValuations(filter: ExportFilter): ValuationCase[] {
-    let vals = load<ValuationCase[]>(KEYS.valuations) ?? [];
+    let vals = this.getValuations();
     if (filter.bankId) vals = vals.filter(v => v.bankId === filter.bankId);
     if (filter.employeeId) vals = vals.filter(v => v.assignedTo === filter.employeeId);
     if (filter.status) vals = vals.filter(v => v.status === filter.status);
@@ -683,8 +775,9 @@ export class LocalDbService {
   }
 
   // ── Accounts ──────────────────────────────────────────────
+  
   static getAccounts(): AccountRecord[] {
-    return load<AccountRecord[]>(KEYS.accounts) ?? [];
+    return cachedAccounts.length > 0 ? cachedAccounts : SEED_ACCOUNTS;
   }
 
   static getAccountForUser(userId: string): AccountRecord | null {
@@ -692,19 +785,14 @@ export class LocalDbService {
   }
 
   static saveAccount(account: AccountRecord): void {
-    const accounts = this.getAccounts();
-    const index = accounts.findIndex(a => a.id === account.id || a.userId === account.userId);
-    if (index >= 0) {
-      accounts[index] = account;
-    } else {
-      accounts.push(account);
-    }
-    store(KEYS.accounts, accounts);
+    cachedAccounts = [...cachedAccounts.filter(a => a.id !== account.id || a.userId !== account.userId), account];
+    setDoc(doc(db, KEYS.accounts, account.id), account).catch(err => console.error('Error saving account:', err));
   }
 
   // ── Leaves & Holidays ─────────────────────────────────────
+  
   static getLeaveQuotas(): LeaveQuota[] {
-    return load<LeaveQuota[]>(KEYS.leaveQuotas) ?? [];
+    return cachedLeaveQuotas;
   }
 
   static getLeaveQuotaForUser(userId: string, year: number): LeaveQuota | null {
@@ -712,40 +800,40 @@ export class LocalDbService {
   }
 
   static saveLeaveQuota(quota: LeaveQuota): void {
-    const quotas = this.getLeaveQuotas();
-    const index = quotas.findIndex(q => q.userId === quota.userId && q.year === quota.year);
-    if (index >= 0) quotas[index] = quota;
-    else quotas.push(quota);
-    store(KEYS.leaveQuotas, quotas);
+    const key = `${quota.userId}_${quota.year}`;
+    cachedLeaveQuotas = [...cachedLeaveQuotas.filter(q => !(q.userId === quota.userId && q.year === quota.year)), quota];
+    setDoc(doc(db, KEYS.leaveQuotas, key), quota).catch(err => console.error('Error saving leave quota:', err));
   }
 
   static getLeaveRequests(userId?: string): LeaveRequest[] {
-    const reqs = load<LeaveRequest[]>(KEYS.leaveRequests) ?? [];
+    const reqs = cachedLeaveRequests;
     if (userId) return reqs.filter(r => r.userId === userId);
     return reqs;
   }
 
   static saveLeaveRequest(req: LeaveRequest): void {
-    const reqs = this.getLeaveRequests();
-    const index = reqs.findIndex(r => r.id === req.id);
-    if (index >= 0) reqs[index] = req;
-    else reqs.push(req);
-    store(KEYS.leaveRequests, reqs);
+    cachedLeaveRequests = [...cachedLeaveRequests.filter(r => r.id !== req.id), req];
+    setDoc(doc(db, KEYS.leaveRequests, req.id), req).catch(err => console.error('Error saving leave request:', err));
   }
 
   static getHolidays(): Holiday[] {
-    return load<Holiday[]>(KEYS.holidays) ?? [];
+    return cachedHolidays.length > 0 ? cachedHolidays : [
+      { id: 'hol_1', date: '2026-01-26', name: 'Republic Day', type: 'PUBLIC' },
+      { id: 'hol_2', date: '2026-03-25', name: 'Holi', type: 'PUBLIC' },
+      { id: 'hol_3', date: '2026-08-15', name: 'Independence Day', type: 'PUBLIC' },
+      { id: 'hol_4', date: '2026-10-02', name: 'Gandhi Jayanti', type: 'PUBLIC' },
+      { id: 'hol_5', date: '2026-11-01', name: 'Diwali', type: 'PUBLIC' },
+      { id: 'hol_6', date: '2026-12-25', name: 'Christmas', type: 'PUBLIC' },
+    ];
   }
 
   static saveHoliday(holiday: Holiday): void {
-    const holidays = this.getHolidays();
-    const index = holidays.findIndex(h => h.id === holiday.id);
-    if (index >= 0) holidays[index] = holiday;
-    else holidays.push(holiday);
-    store(KEYS.holidays, holidays);
+    cachedHolidays = [...cachedHolidays.filter(h => h.id !== holiday.id), holiday];
+    setDoc(doc(db, KEYS.holidays, holiday.id), holiday).catch(err => console.error('Error saving holiday:', err));
   }
 
   static deleteHoliday(id: string): void {
-    store(KEYS.holidays, this.getHolidays().filter(h => h.id !== id));
+    cachedHolidays = cachedHolidays.filter(h => h.id !== id);
+    deleteDoc(doc(db, KEYS.holidays, id)).catch(err => console.error('Error deleting holiday:', err));
   }
 }

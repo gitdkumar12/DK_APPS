@@ -299,7 +299,7 @@ interface TasksPageProps {
 }
 
 export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
-  const { currentUser, isAdmin, refresh } = useApp();
+  const { currentUser, isAdmin, refresh, refreshKey } = useApp();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
@@ -318,7 +318,7 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
     setTasks(LocalDbService.getTasks(uid, role));
     setProjects(LocalDbService.getProjects());
     setEmployees(LocalDbService.getUsers().filter(u => u.role === 'EMPLOYEE'));
-  }, [currentUser, isAdmin, myTasksOnly]);
+  }, [currentUser, isAdmin, myTasksOnly, refreshKey]);
 
   const filtered = tasks.filter(t => {
     if (filterStatus && t.status !== filterStatus) return false;

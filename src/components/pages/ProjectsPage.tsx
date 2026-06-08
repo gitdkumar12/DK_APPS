@@ -88,14 +88,14 @@ function ProjectModal({
 }
 
 export default function ProjectsPage() {
-  const { isAdmin, refresh } = useApp();
+  const { isAdmin, refresh, refreshKey } = useApp();
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  useEffect(() => { setProjects(LocalDbService.getProjects()); }, []);
+  useEffect(() => { setProjects(LocalDbService.getProjects()); }, [refreshKey]);
 
   const filtered = projects.filter(p => {
     if (filterStatus && p.status !== filterStatus) return false;
