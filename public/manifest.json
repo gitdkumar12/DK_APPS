@@ -1,0 +1,35 @@
+{
+  "name": "GT Consultancy Raipur",
+  "short_name": "GT Consultancy",
+  "description": "Enterprise Operations Platform — Architecture & Valuation Workstreams",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "type": "image/png",
+      "sizes": "1280x800",
+      "form_factor": "wide"
+    }
+  ]
+}
