@@ -47,19 +47,31 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 400));
-    const { user, error: err } = LocalDbService.login(email, password);
-    if (err) {
-      setError(err);
-    } else if (user) {
-      setCurrentUser(user);
+    try {
+      await new Promise(r => setTimeout(r, 400));
+      const { user, error: err } = LocalDbService.login(email, password);
+      if (err) {
+        setError(err);
+      } else if (user) {
+        setCurrentUser(user);
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err?.message || 'A database or connection error occurred. Please check your network.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleQuickLogin = (cred: typeof CREDENTIALS[0]) => {
-    const { user } = LocalDbService.login(cred.email, cred.password);
-    if (user) setCurrentUser(user);
+    setError('');
+    try {
+      const { user } = LocalDbService.login(cred.email, cred.password);
+      if (user) setCurrentUser(user);
+    } catch (err: any) {
+      console.error('Quick login error:', err);
+      setError(err?.message || 'A database or connection error occurred. Please check your network.');
+    }
   };
 
   const fillCreds = (cred: typeof CREDENTIALS[0]) => {
@@ -146,6 +158,7 @@ export default function LoginPage() {
             {CREDENTIALS.map(c => (
               <button
                 key={c.email}
+                type="button"
                 onClick={() => handleQuickLogin(c)}
                 className="btn btn-secondary"
                 style={{ justifyContent: 'center', fontSize: 12, padding: '8px 12px', flexDirection: 'column', height: 'auto', gap: 2 }}
@@ -214,6 +227,7 @@ export default function LoginPage() {
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={e => { e.stopPropagation(); handleQuickLogin(c); }}
                       className="btn btn-primary btn-sm"
                       style={{ fontSize: 11, padding: '5px 10px' }}
