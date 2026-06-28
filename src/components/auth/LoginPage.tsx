@@ -146,38 +146,43 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0 14px' }}>
-            <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Quick Access</span>
-            <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
-          </div>
+          {/* Divider and Quick Access (Development only) */}
+          {process.env.NODE_ENV !== 'production' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0 14px' }}>
+                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Quick Access</span>
+                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+              </div>
 
-          {/* Quick login buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {CREDENTIALS.map(c => (
-              <button
-                key={c.email}
-                type="button"
-                onClick={() => handleQuickLogin(c)}
-                className="btn btn-secondary"
-                style={{ justifyContent: 'center', fontSize: 12, padding: '8px 12px', flexDirection: 'column', height: 'auto', gap: 2 }}
-              >
-                <span>{c.icon} {c.name.split(' ')[0]}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{c.role}</span>
-              </button>
-            ))}
-          </div>
+              {/* Quick login buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {CREDENTIALS.map(c => (
+                  <button
+                    key={c.email}
+                    type="button"
+                    onClick={() => handleQuickLogin(c)}
+                    className="btn btn-secondary"
+                    style={{ justifyContent: 'center', fontSize: 12, padding: '8px 12px', flexDirection: 'column', height: 'auto', gap: 2 }}
+                  >
+                    <span>{c.icon} {c.name.split(' ')[0]}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{c.role}</span>
+                  </button>
+                ))}
+              </div>
 
-          <div style={{ textAlign: 'center', marginTop: 18 }}>
-            <button
-              onClick={() => setShowCreds(!showCreds)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, color: 'var(--accent-indigo-light)', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-            >
-              <ShieldCheck size={12} />
-              {showCreds ? 'Hide Credentials' : 'View All Credentials'}
-            </button>
-          </div>
+              <div style={{ textAlign: 'center', marginTop: 18 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreds(!showCreds)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, color: 'var(--accent-indigo-light)', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  <ShieldCheck size={12} />
+                  {showCreds ? 'Hide Credentials' : 'View All Credentials'}
+                </button>
+              </div>
+            </>
+          )}
 
           <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
             <Building2 size={11} style={{ display: 'inline', marginRight: 4 }} />
@@ -186,7 +191,7 @@ export default function LoginPage() {
         </div>
 
         {/* Credentials Panel */}
-        {showCreds && (
+        {process.env.NODE_ENV !== 'production' && showCreds && (
           <div style={{
             flex: '0 0 380px',
             background: 'var(--bg-card)', border: '1px solid var(--border)',
