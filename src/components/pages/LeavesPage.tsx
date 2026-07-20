@@ -20,11 +20,20 @@ export default function LeavesPage() {
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
 
+  // Holiday Modal state (for admin)
+  const [showAddHolidayModal, setShowAddHolidayModal] = useState(false);
+  const [newHolidayName, setNewHolidayName] = useState('');
+  const [newHolidayDate, setNewHolidayDate] = useState('');
+  const [newHolidayType, setNewHolidayType] = useState<'PUBLIC' | 'COMPANY'>('PUBLIC');
+
   // Quota states (for admin)
   const [selectedUserForQuota, setSelectedUserForQuota] = useState<string>('');
   const [quotaCL, setQuotaCL] = useState(0);
   const [quotaPL, setQuotaPL] = useState(0);
   const [quotaSick, setQuotaSick] = useState(0);
+  const [usedCL, setUsedCL] = useState(0);
+  const [usedPL, setUsedPL] = useState(0);
+  const [usedSick, setUsedSick] = useState(0);
 
   const currentYear = new Date().getFullYear();
 
@@ -107,21 +116,14 @@ export default function LeavesPage() {
       totalCL: quotaCL,
       totalPL: quotaPL,
       totalSick: quotaSick,
-      usedCL: 0,
-      usedPL: 0,
-      usedSick: 0
+      usedCL: usedCL,
+      usedPL: usedPL,
+      usedSick: usedSick
     };
     
-    // Preserve existing usage if updating
-    const existing = LocalDbService.getLeaveQuotaForUser(selectedUserForQuota, currentYear);
-    if (existing) {
-      quota.usedCL = existing.usedCL;
-      quota.usedPL = existing.usedPL;
-      quota.usedSick = existing.usedSick;
-    }
-    
     LocalDbService.saveLeaveQuota(quota);
-    alert('Leave quota saved successfully.');
+    alert('Leave quota & balances updated successfully.');
+    refreshData();
   };
 
   const selectUserForQuota = (userId: string) => {
@@ -131,9 +133,36 @@ export default function LeavesPage() {
       setQuotaCL(quota.totalCL);
       setQuotaPL(quota.totalPL);
       setQuotaSick(quota.totalSick);
+      setUsedCL(quota.usedCL);
+      setUsedPL(quota.usedPL);
+      setUsedSick(quota.usedSick);
     } else {
-      setQuotaCL(0); setQuotaPL(0); setQuotaSick(0);
+      setQuotaCL(12); setQuotaPL(15); setQuotaSick(7);
+      setUsedCL(0); setUsedPL(0); setUsedSick(0);
     }
+  };
+
+  const handleAddHoliday = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHolidayName || !newHolidayDate) return;
+    const h: Holiday = {
+      id: `hol_${Date.now()}`,
+      date: newHolidayDate,
+      name: newHolidayName,
+      type: newHolidayType
+    };
+    LocalDbService.saveHoliday(h);
+    setNewHolidayName('');
+    setNewHolidayDate('');
+    setShowAddHolidayModal(false);
+    alert('New holiday added to the calendar.');
+    refreshData();
+  };
+
+  const handleDeleteHoliday = (id: string) => {
+    if (!confirm('Remove this holiday from the company calendar?')) return;
+    LocalDbService.deleteHoliday(id);
+    refreshData();
   };
 
   const renderLeaveGraph = (used: number, total: number, color: string, title: string) => {
@@ -177,7 +206,7 @@ export default function LeavesPage() {
           <button 
             className={`btn ${activeTab === 'my-leaves' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveTab('my-leaves')}
-            style={{ borderRadius: '8px 8px 0 0', borderBottom: activeTab === 'my-leaves' ? 'none' : '' }}
+            style={{ borderRadius: '8px 8px 0 0' }}
           >
             My Leaves
           </button>
@@ -197,7 +226,7 @@ export default function LeavesPage() {
             onClick={() => setActiveTab('quotas')}
             style={{ borderRadius: '8px 8px 0 0' }}
           >
-            Manage Quotas
+            Manage Quotas & Balances
           </button>
         )}
         <button 
@@ -265,7 +294,7 @@ export default function LeavesPage() {
             <form onSubmit={handleApplyLeave}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>Leave Type</label>
-                <select className="input-field" value={leaveType} onChange={e => setLeaveType(e.target.value as LeaveType)}>
+                <select className="form-select" value={leaveType} onChange={e => setLeaveType(e.target.value as LeaveType)}>
                   <option value="CL">Casual Leave (CL)</option>
                   <option value="PL">Privilege Leave (PL)</option>
                   <option value="SICK">Sick Leave</option>
@@ -274,18 +303,18 @@ export default function LeavesPage() {
               <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>Start Date</label>
-                  <input type="date" className="input-field" required value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  <input type="date" className="form-input" required value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>End Date</label>
-                  <input type="date" className="input-field" required value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  <input type="date" className="form-input" required value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
               </div>
               <div style={{ marginBottom: 24 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>Reason</label>
-                <textarea className="input-field" rows={3} required value={reason} onChange={e => setReason(e.target.value)}></textarea>
+                <textarea className="form-textarea" rows={3} required value={reason} onChange={e => setReason(e.target.value)}></textarea>
               </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Submit Request</button>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Submit Request</button>
             </form>
           </div>
         </div>
@@ -327,10 +356,10 @@ export default function LeavesPage() {
                     {req.status === 'PENDING' && (
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus(req.id, 'APPROVED')} title="Approve">
-                          <Check size={16} />
+                          <Check size={16} /> Approve
                         </button>
                         <button className="btn btn-secondary btn-sm" onClick={() => handleUpdateStatus(req.id, 'REJECTED')} title="Reject">
-                          <X size={16} />
+                          <X size={16} /> Reject
                         </button>
                       </div>
                     )}
@@ -354,37 +383,67 @@ export default function LeavesPage() {
                 onClick={() => selectUserForQuota(emp.id)}
                 style={{
                   padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                  background: selectedUserForQuota === emp.id ? 'var(--primary-light)' : 'var(--bg-primary)'
+                  background: selectedUserForQuota === emp.id ? 'rgba(99,102,241,0.12)' : 'transparent'
                 }}
               >
-                <div style={{ fontWeight: 600 }}>{emp.name}</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{emp.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.department}</div>
               </div>
             ))}
           </div>
 
           {selectedUserForQuota ? (
             <div className="card" style={{ padding: 24 }}>
-              <h3 style={{ margin: '0 0 24px 0', fontSize: 18 }}>Yearly Leave Quotas ({currentYear})</h3>
+              <h3 style={{ margin: '0 0 24px 0', fontSize: 18, color: 'var(--text-primary)' }}>Yearly Leave Quotas & Balances ({currentYear})</h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>Casual Leave (CL)</label>
-                  <input type="number" className="input-field" value={quotaCL} onChange={e => setQuotaCL(Number(e.target.value))} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: 16, borderRadius: 10, border: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--accent-sky)', marginBottom: 10 }}>Casual Leave (CL)</div>
+                  <div className="form-grid form-grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Total Allowed</label>
+                      <input type="number" className="form-input" value={quotaCL} onChange={e => setQuotaCL(Number(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Used Days</label>
+                      <input type="number" className="form-input" value={usedCL} onChange={e => setUsedCL(Number(e.target.value))} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>Privilege Leave (PL)</label>
-                  <input type="number" className="input-field" value={quotaPL} onChange={e => setQuotaPL(Number(e.target.value))} />
+
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: 16, borderRadius: 10, border: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 10 }}>Privilege Leave (PL)</div>
+                  <div className="form-grid form-grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Total Allowed</label>
+                      <input type="number" className="form-input" value={quotaPL} onChange={e => setQuotaPL(Number(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Used Days</label>
+                      <input type="number" className="form-input" value={usedPL} onChange={e => setUsedPL(Number(e.target.value))} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: 14 }}>Sick Leave</label>
-                  <input type="number" className="input-field" value={quotaSick} onChange={e => setQuotaSick(Number(e.target.value))} />
+
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: 16, borderRadius: 10, border: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--accent-amber)', marginBottom: 10 }}>Sick Leave</div>
+                  <div className="form-grid form-grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Total Allowed</label>
+                      <input type="number" className="form-input" value={quotaSick} onChange={e => setQuotaSick(Number(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Used Days</label>
+                      <input type="number" className="form-input" value={usedSick} onChange={e => setUsedSick(Number(e.target.value))} />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={handleSaveQuota}>Save Quota</button>
+              <button className="btn btn-primary" onClick={handleSaveQuota}>Save Quota & Balances</button>
             </div>
           ) : (
             <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: 'var(--text-muted)' }}>Select an employee to manage their leave limits.</p>
+              <p style={{ color: 'var(--text-muted)' }}>Select an employee to manage their leave limits and used balances.</p>
             </div>
           )}
         </div>
@@ -392,20 +451,94 @@ export default function LeavesPage() {
 
       {activeTab === 'holidays' && (
         <div className="card" style={{ padding: 24 }}>
-          <h3 style={{ margin: '0 0 24px 0', fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Calendar size={20} color="var(--primary)" /> Company Holiday Calendar {currentYear}
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)' }}>
+              <Calendar size={20} color="var(--accent-indigo-light)" /> Company Holiday Calendar {currentYear}
+            </h3>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => setShowAddHolidayModal(true)}>
+                <Plus size={14} /> Add Holiday
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
             {holidays.map(h => (
               <div key={h.id} style={{ 
                 padding: 16, border: '1px solid var(--border)', borderRadius: 12,
-                background: 'var(--bg-secondary)', borderLeft: '4px solid var(--primary)'
+                background: 'var(--bg-secondary)', borderLeft: '4px solid var(--accent-indigo)',
+                position: 'relative'
               }}>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                <div style={{ fontSize: 15, fontWeight: 500 }}>{h.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{h.type} HOLIDAY</div>
+                {isAdmin && (
+                  <button 
+                    onClick={() => handleDeleteHoliday(h.id)}
+                    style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer', padding: 4 }}
+                    title="Remove Holiday"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4, color: 'var(--text-primary)' }}>
+                  {new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{h.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {h.type} HOLIDAY
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add Holiday Modal */}
+      {showAddHolidayModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Add Company Holiday</h2>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowAddHolidayModal(false)}><X size={16} /></button>
+            </div>
+            <form onSubmit={handleAddHoliday}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="form-group">
+                  <label className="form-label">Holiday Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Durga Puja, Independence Day"
+                    value={newHolidayName}
+                    onChange={e => setNewHolidayName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={newHolidayDate}
+                    onChange={e => setNewHolidayDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Holiday Type</label>
+                  <select
+                    className="form-select"
+                    value={newHolidayType}
+                    onChange={e => setNewHolidayType(e.target.value as any)}
+                  >
+                    <option value="PUBLIC">PUBLIC HOLIDAY</option>
+                    <option value="COMPANY">COMPANY HOLIDAY</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddHolidayModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Add Holiday</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
