@@ -25,11 +25,14 @@ export interface User {
   name: string;
   email: string;
   password: string;
+  phone?: string;
   role: UserRole;
   avatar?: string;
   department: 'Architecture' | 'Valuation' | 'Admin' | 'Accounts';
   joinDate: string;
   isActive: boolean;
+  notifyEmail?: boolean;
+  notifySms?: boolean;
 }
 
 export type ProjectStatus = 'ACTIVE' | 'ON_HOLD' | 'COMPLETED';

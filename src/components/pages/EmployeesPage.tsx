@@ -10,11 +10,14 @@ function EmployeeModal({ onClose, onSave, user }: { onClose: () => void; onSave:
   const [form, setForm] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
+    phone: user?.phone ?? '',
     password: user?.password ?? '',
     department: user?.department ?? 'Architecture' as User['department'],
     role: user?.role ?? 'EMPLOYEE' as User['role'],
     joinDate: user?.joinDate ?? new Date().toISOString().split('T')[0],
     isActive: user?.isActive ?? true,
+    notifyEmail: user?.notifyEmail ?? true,
+    notifySms: user?.notifySms ?? true,
   });
   const [showPassword, setShowPassword] = useState(false);
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
@@ -34,46 +37,47 @@ function EmployeeModal({ onClose, onSave, user }: { onClose: () => void; onSave:
                 <input type="text" className="form-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Full name" required />
               </div>
               <div className="form-group">
-                <label className="form-label">Email</label>
+                <label className="form-label">Email Address</label>
                 <input type="email" className="form-input" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@gtconsultancy.in" required />
               </div>
             </div>
 
-            {/* Password */}
-            <div className="form-group">
-              <label className="form-label">{user ? 'Reset Password' : 'Set Password'}</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  className="form-input"
-                  style={{ paddingRight: 44 }}
-                  value={form.password}
-                  onChange={e => set('password', e.target.value)}
-                  placeholder={user ? 'Enter new password to reset…' : 'Set login password'}
-                  required={!user}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
+            <div className="form-grid form-grid-2" style={{ marginTop: 10 }}>
+              <div className="form-group">
+                <label className="form-label">Mobile Phone (SMS / WhatsApp)</label>
+                <input type="tel" className="form-input" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+91 98765 43210" />
               </div>
-              {form.password && (
-                <div style={{ fontSize: 11, marginTop: 4, padding: '6px 10px', borderRadius: 6, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: 'var(--accent-indigo-light)', fontFamily: 'monospace' }}>
-                  🔑 {form.password}
+              <div className="form-group">
+                <label className="form-label">{user ? 'Reset Password' : 'Set Password'}</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-input"
+                    style={{ paddingRight: 44 }}
+                    value={form.password}
+                    onChange={e => set('password', e.target.value)}
+                    placeholder={user ? 'Enter new password…' : 'Set password'}
+                    required={!user}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
 
-            <div className="form-grid form-grid-2">
+            <div className="form-grid form-grid-2" style={{ marginTop: 10 }}>
               <div className="form-group">
                 <label className="form-label">Department</label>
                 <select className="form-select" value={form.department} onChange={e => set('department', e.target.value)}>
                   <option value="Architecture">Architecture</option>
                   <option value="Valuation">Valuation</option>
                   <option value="Admin">Admin</option>
+                  <option value="Accounts">Accounts</option>
                 </select>
               </div>
               <div className="form-group">
@@ -84,7 +88,28 @@ function EmployeeModal({ onClose, onSave, user }: { onClose: () => void; onSave:
                 </select>
               </div>
             </div>
-            <div className="form-grid form-grid-2">
+
+            <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 10, padding: 14, marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: 'var(--accent-indigo-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                ⚡ Automated Alerts & Dispatch Settings
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={form.notifyEmail} onChange={e => set('notifyEmail', e.target.checked)} />
+                  <span className="checkbox-label" style={{ fontSize: 12, color: 'var(--text-primary)' }}>
+                    ✉️ Send Instant Email Alerts on Task Creation, Status Updates & Remarks
+                  </span>
+                </label>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={form.notifySms} onChange={e => set('notifySms', e.target.checked)} />
+                  <span className="checkbox-label" style={{ fontSize: 12, color: 'var(--text-primary)' }}>
+                    📱 Send Direct Mobile SMS / WhatsApp Messages to Phone Number
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="form-grid form-grid-2" style={{ marginTop: 14 }}>
               <div className="form-group">
                 <label className="form-label">Join Date</label>
                 <input type="date" className="form-input" value={form.joinDate} onChange={e => set('joinDate', e.target.value)} />
@@ -245,12 +270,19 @@ export default function EmployeesPage() {
                   }}>{initials(user.name)}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>{user.name}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 6, fontFamily: 'monospace' }}>{user.email}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 2, fontFamily: 'monospace' }}>{user.email}</div>
+                    {user.phone && (
+                      <div style={{ fontSize: 11, color: 'var(--accent-indigo-light)', marginBottom: 6, fontWeight: 500 }}>
+                        📱 {user.phone}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <span className={`role-badge ${user.role === 'ADMIN' ? 'admin' : 'employee'}`}>{user.role}</span>
                       <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', fontWeight: 500 }}>
                         {user.department}
                       </span>
+                      {user.notifySms && <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 12, background: 'rgba(16,185,129,0.12)', color: 'var(--accent-emerald)', fontWeight: 600 }}>SMS Alert ON</span>}
+                      {user.notifyEmail && <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 12, background: 'rgba(99,102,241,0.12)', color: 'var(--accent-indigo-light)', fontWeight: 600 }}>Email Alert ON</span>}
                       {!user.isActive && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'rgba(244,63,94,0.15)', color: 'var(--accent-rose)', fontWeight: 600 }}>Inactive</span>}
                     </div>
                   </div>
