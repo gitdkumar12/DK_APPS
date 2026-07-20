@@ -30,7 +30,6 @@ const NAV_ITEMS_ADMIN = [
 export default function Sidebar({ activePage, onNavigate, mobileOpen, onMobileClose }: SidebarProps) {
   const { currentUser, isAdmin, logout, setCurrentUser } = useApp();
   const [showResetModal, setShowResetModal] = useState(false);
-  const allUsers = LocalDbService.getUsers();
 
   const handleResetPassword = (newPassword: string) => {
     if (!currentUser) return;
@@ -49,7 +48,7 @@ export default function Sidebar({ activePage, onNavigate, mobileOpen, onMobileCl
           ? [{ id: 'valuation', label: 'Valuations', icon: Scale, section: 'MY WORKSPACE' }]
           : currentUser?.department === 'Accounts'
           ? [{ id: 'accounts', label: 'Accounts', icon: IndianRupee, section: 'MY WORKSPACE' }]
-          : [{ id: 'my-tasks', label: 'My Tasks', icon: ClipboardList, section: 'MY WORKSPACE' }]
+          : [{ id: 'tasks', label: 'Task Log', icon: ClipboardList, section: 'MY WORKSPACE' }]
         ),
         { id: 'leaves', label: 'Leaves & Holidays', icon: CalendarDays, section: 'HR' },
       ];
@@ -119,27 +118,6 @@ export default function Sidebar({ activePage, onNavigate, mobileOpen, onMobileCl
             </div>
           ))}
         </nav>
-
-        {/* Role Switcher (for demo/testing) */}
-        {currentUser && (
-          <div style={{ padding: '0 12px 12px' }}>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px', padding: '0 4px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-              Switch Role (Demo)
-            </div>
-            <div className="role-switcher">
-              {allUsers.map(user => (
-                <button
-                  key={user.id}
-                  className={`role-switch-btn ${currentUser.id === user.id ? 'active' : ''}`}
-                  onClick={() => setCurrentUser(user)}
-                  title={user.name}
-                >
-                  {user.role === 'ADMIN' ? '👑 Admin' : user.name.split(' ')[0]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* User Profile & Logout */}
         <div className="sidebar-bottom">

@@ -33,7 +33,7 @@ function registerSW() {
   }
 }
 
-type PageId = 'dashboard' | 'projects' | 'tasks' | 'my-tasks' | 'valuation' | 'banks' | 'employees' | 'analytics' | 'accounts' | 'leaves';
+type PageId = 'dashboard' | 'projects' | 'tasks' | 'valuation' | 'banks' | 'employees' | 'analytics' | 'accounts' | 'leaves';
 
 export default function Home() {
   const { currentUser, isAdmin, mounted } = useApp();
@@ -54,7 +54,7 @@ export default function Home() {
       } else if (currentUser.department === 'Accounts') {
         allowedPages.push('accounts');
       } else {
-        allowedPages.push('my-tasks');
+        allowedPages.push('tasks');
       }
 
       if (!allowedPages.includes(activePage)) {
@@ -98,8 +98,7 @@ export default function Home() {
     switch (activePage) {
       case 'dashboard': return <Dashboard onNavigate={(p: string) => setActivePage(p as PageId)} />;
       case 'projects': return <ProjectsPage />;
-      case 'tasks': return isAdmin ? <TasksPage myTasksOnly={false} /> : <TasksPage myTasksOnly={true} />;
-      case 'my-tasks': return <TasksPage myTasksOnly={true} />;
+      case 'tasks': return <TasksPage myTasksOnly={false} />;
       case 'valuation': return <ValuationPage />;
       case 'banks': return isAdmin ? <BanksPage /> : null;
       case 'employees': return isAdmin ? <EmployeesPage /> : null;

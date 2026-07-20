@@ -146,43 +146,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider and Quick Access (Development only) */}
-          {process.env.NODE_ENV !== 'production' && (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0 14px' }}>
-                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Quick Access</span>
-                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
-              </div>
 
-              {/* Quick login buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {CREDENTIALS.map(c => (
-                  <button
-                    key={c.email}
-                    type="button"
-                    onClick={() => handleQuickLogin(c)}
-                    className="btn btn-secondary"
-                    style={{ justifyContent: 'center', fontSize: 12, padding: '8px 12px', flexDirection: 'column', height: 'auto', gap: 2 }}
-                  >
-                    <span>{c.icon} {c.name.split(' ')[0]}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{c.role}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ textAlign: 'center', marginTop: 18 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreds(!showCreds)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, color: 'var(--accent-indigo-light)', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                >
-                  <ShieldCheck size={12} />
-                  {showCreds ? 'Hide Credentials' : 'View All Credentials'}
-                </button>
-              </div>
-            </>
-          )}
 
           <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
             <Building2 size={11} style={{ display: 'inline', marginRight: 4 }} />
@@ -190,82 +154,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Credentials Panel */}
-        {process.env.NODE_ENV !== 'production' && showCreds && (
-          <div style={{
-            flex: '0 0 380px',
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: 18, padding: 24,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-            animation: 'slideUp 0.25s ease',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShieldCheck size={16} style={{ color: 'var(--accent-indigo-light)' }} />
-              </div>
-              <div>
-                <div style={{ fontFamily: 'Outfit', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>System Credentials</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click a row to auto-fill the login form</div>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {CREDENTIALS.map(c => (
-                <div
-                  key={c.email}
-                  onClick={() => fillCreds(c)}
-                  style={{
-                    background: c.role === 'Admin' ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${c.role === 'Admin' ? 'rgba(99,102,241,0.25)' : 'var(--border)'}`,
-                    borderRadius: 10, padding: '12px 14px', cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = c.role === 'Admin' ? 'rgba(99,102,241,0.25)' : 'var(--border)')}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 18 }}>{c.icon}</span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{c.name}</div>
-                        <span className={`role-badge ${c.role === 'Admin' ? 'admin' : 'employee'}`} style={{ fontSize: 9 }}>{c.role}</span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); handleQuickLogin(c); }}
-                      className="btn btn-primary btn-sm"
-                      style={{ fontSize: 11, padding: '5px 10px' }}
-                    >
-                      Login →
-                    </button>
-                  </div>
-
-                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 7, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.email}</span>
-                        <CopyBtn text={c.email} />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Password</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 12, color: 'var(--accent-indigo-light)', fontFamily: 'monospace', fontWeight: 700 }}>{c.password}</span>
-                        <CopyBtn text={c.password} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, fontSize: 11, color: 'var(--accent-amber)', lineHeight: 1.5 }}>
-              ⚡ Admin can reset employee passwords from the <strong>Employees</strong> page after logging in.
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
