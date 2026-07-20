@@ -13,6 +13,7 @@ import EmployeesPage from '@/components/pages/EmployeesPage';
 import AnalyticsPage from '@/components/pages/AnalyticsPage';
 import AccountsPage from '@/components/pages/AccountsPage';
 import LeavesPage from '@/components/pages/LeavesPage';
+import VaultPage from '@/components/pages/VaultPage';
 import { Menu } from 'lucide-react';
 
 // Register service worker
@@ -33,7 +34,7 @@ function registerSW() {
   }
 }
 
-type PageId = 'dashboard' | 'projects' | 'tasks' | 'valuation' | 'banks' | 'employees' | 'analytics' | 'accounts' | 'leaves';
+type PageId = 'dashboard' | 'projects' | 'tasks' | 'valuation' | 'banks' | 'employees' | 'analytics' | 'accounts' | 'leaves' | 'vault';
 
 export default function Home() {
   const { currentUser, isAdmin, mounted } = useApp();
@@ -104,6 +105,7 @@ export default function Home() {
       case 'employees': return isAdmin ? <EmployeesPage /> : null;
       case 'analytics': return isAdmin ? <AnalyticsPage /> : null;
       case 'accounts': return (isAdmin || currentUser.department === 'Accounts') ? <AccountsPage /> : null;
+      case 'vault': return isAdmin ? <VaultPage /> : null;
       case 'leaves': return <LeavesPage />;
       default: return <Dashboard onNavigate={(p: string) => setActivePage(p as PageId)} />;
     }

@@ -137,24 +137,37 @@ export default function CommentsSection({ comments = [], onAddComment, onDeleteC
                     <span className="comment-time">{formatCommentTime(cmt.createdAt)}</span>
                   </div>
                   <div className="comment-text">{cmt.content}</div>
-                  {cmt.attachment && (
-                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {cmt.attachment.type.startsWith('image/') ? (
-                        <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '100%', maxHeight: 200, width: 'fit-content' }}>
-                          <img
-                            src={cmt.attachment.data}
-                            alt={cmt.attachment.name}
-                            style={{ display: 'block', maxWidth: '100%', height: 'auto', maxHeight: 200, cursor: 'pointer' }}
-                            onClick={() => {
-                              const w = window.open();
-                              w?.document.write(`<iframe src="${cmt.attachment?.data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                            }}
-                          />
-                        </div>
-                      ) : (
+                  {cmt.attachment && (() => {
+                    const cleanAuthor = (cmt.authorName || 'User').replace(/[^a-zA-Z0-9]/g, '_');
+                    const cleanFile = cmt.attachment.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const dateStr = cmt.createdAt.split('T')[0];
+                    const structuredName = `GTC_${cleanAuthor}_${dateStr}_${cleanFile}`;
+                    const isImg = cmt.attachment.type.startsWith('image/');
+                    const isVid = cmt.attachment.type.startsWith('video/');
+
+                    return (
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {isImg ? (
+                          <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '100%', maxHeight: 200, width: 'fit-content' }}>
+                            <img
+                              src={cmt.attachment.data}
+                              alt={cmt.attachment.name}
+                              style={{ display: 'block', maxWidth: '100%', height: 'auto', maxHeight: 200, cursor: 'pointer' }}
+                              onClick={() => {
+                                const w = window.open();
+                                w?.document.write(`<iframe src="${cmt.attachment?.data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                              }}
+                            />
+                          </div>
+                        ) : isVid ? (
+                          <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', maxWidth: '100%', maxHeight: 220, width: 'fit-content' }}>
+                            <video src={cmt.attachment.data} controls style={{ maxWidth: '100%', maxHeight: 200 }} />
+                          </div>
+                        ) : null}
+
                         <a
                           href={cmt.attachment.data}
-                          download={cmt.attachment.name}
+                          download={structuredName}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -171,8 +184,9 @@ export default function CommentsSection({ comments = [], onAddComment, onDeleteC
                           }}
                           onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                          title={`Download as ${structuredName}`}
                         >
-                          <span style={{ fontSize: 16 }}>📎</span>
+                          <span style={{ fontSize: 16 }}>{isImg ? '🖼️' : isVid ? '🎬' : '📎'}</span>
                           <span style={{ textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
                             {cmt.attachment.name}
                           </span>
@@ -180,9 +194,9 @@ export default function CommentsSection({ comments = [], onAddComment, onDeleteC
                             ({(cmt.attachment.size / 1024).toFixed(1)} KB)
                           </span>
                         </a>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {canDelete && (
                   <div className="comment-actions">

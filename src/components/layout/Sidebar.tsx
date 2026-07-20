@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard, FolderKanban, ClipboardList,
-  Building2, Users, BarChart3, LogOut,
+  Building2, Users, BarChart3, LogOut, FolderDown,
   Scale, ChevronRight, X, Eye, EyeOff, CheckCircle, IndianRupee, CalendarDays
 } from 'lucide-react';
 import { LocalDbService } from '@/services/LocalDbService';
@@ -22,6 +22,7 @@ const NAV_ITEMS_ADMIN = [
   { id: 'valuation', label: 'Valuations', icon: Scale, section: 'VALUATION' },
   { id: 'banks', label: 'Bank Registry', icon: Building2, section: 'VALUATION' },
   { id: 'accounts', label: 'Accounts', icon: IndianRupee, section: 'ADMIN' },
+  { id: 'vault', label: 'Asset Vault', icon: FolderDown, section: 'ADMIN' },
   { id: 'leaves', label: 'Leaves & Holidays', icon: CalendarDays, section: 'HR' },
   { id: 'employees', label: 'Employees', icon: Users, section: 'HR' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, section: 'ADMIN' },

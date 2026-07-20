@@ -6,7 +6,7 @@ import {
   User, Project, Task, Bank, ValuationCase,
   RevenueRecord, DashboardStats, EmployeeMetrics,
   ExportFilter, TaskStatus, ValuationStatus, TicketComment,
-  AccountRecord, LeaveQuota, LeaveRequest, Holiday, LeaveStatus
+  AccountRecord, LeaveQuota, LeaveRequest, Holiday, LeaveStatus, VaultAsset
 } from '@/types';
 import { db } from '@/lib/firebase';
 import { 
@@ -835,5 +835,72 @@ export class LocalDbService {
   static deleteHoliday(id: string): void {
     cachedHolidays = cachedHolidays.filter(h => h.id !== id);
     deleteDoc(doc(db, KEYS.holidays, id)).catch(err => console.error('Error deleting holiday:', err));
+  }
+
+  // ── Asset Vault ───────────────────────────────────────────
+  static getVaultAssets(): VaultAsset[] {
+    const assets: VaultAsset[] = [];
+    
+    // Tasks
+    const tasks = this.getTasks();
+    tasks.forEach(t => {
+      (t.comments || []).forEach(c => {
+        if (c.attachment) {
+          const dateStr = c.createdAt.split('T')[0];
+          const cleanProject = (t.projectName || 'Task').replace(/[^a-zA-Z0-9]/g, '_');
+          const cleanAuthor = (c.authorName || 'User').replace(/[^a-zA-Z0-9]/g, '_');
+          const cleanFile = c.attachment.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const formatted = `GTC_Task_${cleanProject}_${cleanAuthor}_${dateStr}_${cleanFile}`;
+          
+          assets.push({
+            id: c.id,
+            sourceType: 'TASK',
+            sourceId: t.id,
+            sourceTitle: `${t.projectName} (${t.majorTask})`,
+            authorName: c.authorName,
+            authorRole: c.authorRole,
+            commentId: c.id,
+            fileName: c.attachment.name,
+            formattedFileName: formatted,
+            fileType: c.attachment.type,
+            fileSize: c.attachment.size,
+            dataUrl: c.attachment.data,
+            createdAt: c.createdAt,
+          });
+        }
+      });
+    });
+
+    // Valuations
+    const vals = this.getValuations();
+    vals.forEach(v => {
+      (v.comments || []).forEach(c => {
+        if (c.attachment) {
+          const dateStr = c.createdAt.split('T')[0];
+          const cleanBank = (v.bankName || 'Valuation').replace(/[^a-zA-Z0-9]/g, '_');
+          const cleanAuthor = (c.authorName || 'User').replace(/[^a-zA-Z0-9]/g, '_');
+          const cleanFile = c.attachment.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const formatted = `GTC_Valuation_${cleanBank}_${cleanAuthor}_${dateStr}_${cleanFile}`;
+          
+          assets.push({
+            id: c.id,
+            sourceType: 'VALUATION',
+            sourceId: v.id,
+            sourceTitle: `${v.bankName} - ${v.propertyDetail || v.branch || 'Case'}`,
+            authorName: c.authorName,
+            authorRole: c.authorRole,
+            commentId: c.id,
+            fileName: c.attachment.name,
+            formattedFileName: formatted,
+            fileType: c.attachment.type,
+            fileSize: c.attachment.size,
+            dataUrl: c.attachment.data,
+            createdAt: c.createdAt,
+          });
+        }
+      });
+    });
+
+    return assets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }

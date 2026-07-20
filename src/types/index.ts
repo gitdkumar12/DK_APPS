@@ -242,3 +242,19 @@ export interface Holiday {
   name: string;
   type: 'PUBLIC' | 'COMPANY';
 }
+
+export interface VaultAsset {
+  id: string;
+  sourceType: 'TASK' | 'VALUATION';
+  sourceId: string;
+  sourceTitle: string;
+  authorName: string;
+  authorRole: UserRole;
+  commentId: string;
+  fileName: string;
+  formattedFileName: string;
+  fileType: string;
+  fileSize: number;
+  dataUrl: string;
+  createdAt: string;
+}
