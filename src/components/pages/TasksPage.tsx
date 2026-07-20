@@ -313,8 +313,8 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const uid = myTasksOnly || !isAdmin ? currentUser?.id : undefined;
-    const role = myTasksOnly || !isAdmin ? 'EMPLOYEE' : undefined;
+    const uid = myTasksOnly ? currentUser?.id : undefined;
+    const role = myTasksOnly ? 'EMPLOYEE' : undefined;
     setTasks(LocalDbService.getTasks(uid, role));
     setProjects(LocalDbService.getProjects());
     setEmployees(LocalDbService.getUsers().filter(u => u.role === 'EMPLOYEE'));
@@ -349,8 +349,8 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
       };
       LocalDbService.addTask(newTask);
     }
-    const uid = myTasksOnly || !isAdmin ? currentUser?.id : undefined;
-    const role = myTasksOnly || !isAdmin ? 'EMPLOYEE' : undefined;
+    const uid = myTasksOnly ? currentUser?.id : undefined;
+    const role = myTasksOnly ? 'EMPLOYEE' : undefined;
     setTasks(LocalDbService.getTasks(uid, role));
     setShowModal(false);
     setEditTask(null);
@@ -366,8 +366,8 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
 
   const handleMarkReview = (task: Task) => {
     LocalDbService.updateTask({ ...task, status: 'PENDING_REVIEW', updatedAt: new Date().toISOString() });
-    const uid = myTasksOnly || !isAdmin ? currentUser?.id : undefined;
-    const role = myTasksOnly || !isAdmin ? 'EMPLOYEE' : undefined;
+    const uid = myTasksOnly ? currentUser?.id : undefined;
+    const role = myTasksOnly ? 'EMPLOYEE' : undefined;
     setTasks(LocalDbService.getTasks(uid, role));
     refresh();
   };
@@ -425,7 +425,7 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
                 <option value="PENDING_REVIEW">Pending Review</option>
                 <option value="CLOSED">Closed</option>
               </select>
-              {isAdmin && !myTasksOnly && (
+              {!myTasksOnly && (
                 <>
                   <select className="filter-input" value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}>
                     <option value="">All Employees</option>
@@ -471,7 +471,7 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
                     <th>Status</th>
                     <th>Remarks</th>
                     <th>Visit</th>
-                    {isAdmin && !myTasksOnly && <th>Assigned To</th>}
+                    {!myTasksOnly && <th>Assigned To</th>}
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -525,7 +525,7 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
                             : <span style={{ color: 'var(--text-muted)' }}>—</span>
                           }
                         </td>
-                        {isAdmin && !myTasksOnly && <td>{t.assignedToName.split(' ')[0]}</td>}
+                        {!myTasksOnly && <td>{t.assignedToName ? t.assignedToName.split(' ')[0] : '—'}</td>}
                         <td>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button
