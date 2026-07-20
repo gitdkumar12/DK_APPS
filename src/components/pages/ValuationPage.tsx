@@ -443,9 +443,7 @@ export default function ValuationPage() {
   const [search, setSearch] = useState('');
 
   const load = () => {
-    const uid = isAdmin ? undefined : currentUser?.id;
-    const role = isAdmin ? undefined : 'EMPLOYEE';
-    setCases(LocalDbService.getValuations(uid, role));
+    setCases(LocalDbService.getValuations());
     setBanks(LocalDbService.getBanks());
     setEmployees(LocalDbService.getUsers().filter(u => u.role === 'EMPLOYEE'));
   };
@@ -560,12 +558,10 @@ export default function ValuationPage() {
                 <option value="">All Status</option>
                 {PIPELINE_STEPS.map(s => <option key={s.status} value={s.status}>{s.label}</option>)}
               </select>
-              {isAdmin && (
-                <select className="filter-input" value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}>
-                  <option value="">All Employees</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
-              )}
+              <select className="filter-input" value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}>
+                <option value="">All Employees</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
               {(filterBank || filterStatus || filterEmployee || search) && (
                 <button className="btn btn-secondary btn-sm" onClick={() => { setFilterBank(''); setFilterStatus(''); setFilterEmployee(''); setSearch(''); }}>
                   <X size={12} /> Clear
