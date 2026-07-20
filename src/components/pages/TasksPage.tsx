@@ -220,12 +220,17 @@ function TaskModal({ onClose, onSave, task, projects, employees, isAdmin, curren
             className="form-select"
             value={form.status}
             onChange={e => setField('status', e.target.value)}
-            disabled={!isAdmin && form.status === 'CLOSED'}
+            disabled={!isAdmin && form.assignedTo !== currentUserId}
           >
             <option value="OPEN">OPEN</option>
             <option value="PENDING_REVIEW">PENDING REVIEW</option>
             {isAdmin && <option value="CLOSED">CLOSED</option>}
           </select>
+          {!isAdmin && form.assignedTo !== currentUserId && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+              🔒 Only assigned employee ({form.assignedToName || 'Assignee'}) or Admin can submit this task.
+            </div>
+          )}
         </div>
       </div>
 
@@ -337,8 +342,20 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
   });
 
   const handleSave = (taskData: Partial<Task>) => {
+    let finalComments = taskData.comments || [];
+    if (editTask && editTask.status === 'OPEN' && taskData.status === 'PENDING_REVIEW') {
+      const systemComment: TicketComment = {
+        id: `cmt_${Date.now()}`,
+        authorId: currentUser?.id ?? '',
+        authorName: currentUser?.name ?? 'Employee',
+        authorRole: currentUser?.role ?? 'EMPLOYEE',
+        content: `📌 SUBMITTED FOR REVIEW: Task submitted for Admin review by ${currentUser?.name ?? 'Assignee'} on ${new Date().toLocaleDateString('en-IN')}. (Notified Admin Piyush Raj Verma)`,
+        createdAt: new Date().toISOString(),
+      };
+      finalComments = [...finalComments, systemComment];
+    }
     if (editTask) {
-      LocalDbService.updateTask({ ...editTask, ...taskData, updatedAt: new Date().toISOString() });
+      LocalDbService.updateTask({ ...editTask, ...taskData, comments: finalComments, updatedAt: new Date().toISOString() });
     } else {
       const newTask: Task = {
         ...(taskData as any),
@@ -365,7 +382,28 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
   };
 
   const handleMarkReview = (task: Task) => {
-    LocalDbService.updateTask({ ...task, status: 'PENDING_REVIEW', updatedAt: new Date().toISOString() });
+    if (!isAdmin && task.assignedTo !== currentUser?.id) {
+      alert('Only the assigned employee or Admin can submit this task.');
+      return;
+    }
+
+    const systemComment: TicketComment = {
+      id: `cmt_${Date.now()}`,
+      authorId: currentUser?.id ?? '',
+      authorName: currentUser?.name ?? 'Employee',
+      authorRole: currentUser?.role ?? 'EMPLOYEE',
+      content: `📌 SUBMITTED FOR REVIEW: Task submitted for Admin review by ${currentUser?.name ?? 'Assignee'} on ${new Date().toLocaleDateString('en-IN')}. (Notified Admin Piyush Raj Verma)`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedComments = [...(task.comments || []), systemComment];
+
+    LocalDbService.updateTask({
+      ...task,
+      status: 'PENDING_REVIEW',
+      comments: updatedComments,
+      updatedAt: new Date().toISOString()
+    });
     const uid = myTasksOnly ? currentUser?.id : undefined;
     const role = myTasksOnly ? 'EMPLOYEE' : undefined;
     setTasks(LocalDbService.getTasks(uid, role));
@@ -533,7 +571,7 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
                               onClick={() => { setEditTask(t); setShowModal(true); }}
                               title="Edit"
                             >Edit</button>
-                            {t.status === 'OPEN' && !isAdmin && (
+                            {t.status === 'OPEN' && (isAdmin || t.assignedTo === currentUser?.id) && (
                               <button className="btn btn-sm" style={{ background: 'rgba(139,92,246,0.15)', color: 'var(--accent-violet)', border: '1px solid rgba(139,92,246,0.3)' }}
                                 onClick={() => handleMarkReview(t)}>
                                 Submit

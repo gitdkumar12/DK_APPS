@@ -102,6 +102,10 @@ export default function Sidebar({ activePage, onNavigate, mobileOpen, onMobileCl
               {items.map(item => {
                 const Icon = item.icon;
                 const isActive = activePage === item.id;
+                const pendingReviewCount = isAdmin && item.id === 'tasks' 
+                  ? LocalDbService.getTasks().filter(t => t.status === 'PENDING_REVIEW').length 
+                  : 0;
+
                 return (
                   <button
                     key={item.id}
@@ -111,7 +115,12 @@ export default function Sidebar({ activePage, onNavigate, mobileOpen, onMobileCl
                   >
                     <Icon size={16} />
                     {item.label}
-                    {isActive && <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                    {pendingReviewCount > 0 && (
+                      <span className="nav-badge" style={{ marginLeft: 'auto', background: 'rgba(139, 92, 246, 0.2)', color: 'var(--accent-violet)', borderColor: 'rgba(139, 92, 246, 0.4)' }}>
+                        {pendingReviewCount} review
+                      </span>
+                    )}
+                    {isActive && <ChevronRight size={14} style={{ marginLeft: pendingReviewCount > 0 ? 4 : 'auto', opacity: 0.5 }} />}
                   </button>
                 );
               })}
