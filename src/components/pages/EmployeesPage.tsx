@@ -116,6 +116,10 @@ export default function EmployeesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+
   const metrics = LocalDbService.getEmployeeMetrics();
 
   const load = () => setUsers(LocalDbService.getUsers());
@@ -148,6 +152,21 @@ export default function EmployeesPage() {
 
   const initials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
+  const filteredUsers = users.filter(u => {
+    if (filterDept && u.department !== filterDept) return false;
+    if (filterRole && u.role !== filterRole) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      return (
+        u.name.toLowerCase().includes(s) ||
+        u.email.toLowerCase().includes(s) ||
+        u.department.toLowerCase().includes(s) ||
+        u.role.toLowerCase().includes(s)
+      );
+    }
+    return true;
+  });
+
   return (
     <>
       <div className="page-header">
@@ -168,9 +187,50 @@ export default function EmployeesPage() {
       </div>
 
       <div className="content-area" style={{ paddingTop: 0 }}>
+        {/* Search & Filter Bar */}
+        <div className="table-container" style={{ padding: '14px 20px', marginBottom: 16 }}>
+          <div className="filter-bar">
+            <input
+              type="text"
+              className="filter-input"
+              placeholder="🔍 Search employee name, email, department..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ minWidth: 260 }}
+            />
+            <select className="filter-input" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
+              <option value="">All Departments</option>
+              <option value="Architecture">Architecture</option>
+              <option value="Valuation">Valuation</option>
+              <option value="Admin">Admin</option>
+              <option value="Accounts">Accounts</option>
+            </select>
+            <select className="filter-input" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+              <option value="">All Roles</option>
+              <option value="ADMIN">Admin</option>
+              <option value="EMPLOYEE">Employee</option>
+            </select>
+            {(search || filterDept || filterRole) && (
+              <button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setFilterDept(''); setFilterRole(''); }}>
+                <X size={12} /> Clear
+              </button>
+            )}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+              Showing {filteredUsers.length} of {users.length} members
+            </span>
+          </div>
+        </div>
+
         {/* Employee Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-          {users.map(user => {
+        {filteredUsers.length === 0 ? (
+          <div className="empty-state">
+            <Users size={36} style={{ opacity: 0.4 }} />
+            <span className="empty-title">No employees found</span>
+            <span className="empty-sub">Try adjusting your search query or department filter</span>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+            {filteredUsers.map(user => {
             const m = metrics.find(x => x.userId === user.id);
             const revealed = revealedPasswords.has(user.id);
             return (
@@ -251,9 +311,10 @@ export default function EmployeesPage() {
                   </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {showModal && (
