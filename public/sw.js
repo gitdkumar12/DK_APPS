@@ -1,5 +1,5 @@
 // GT Consultancy Raipur — Service Worker (Phase 1)
-const CACHE_NAME = 'gtc-v1';
+const CACHE_NAME = 'gtc-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -23,15 +23,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Network-First Strategy to ensure code updates reflect immediately
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).then(response => {
+    fetch(event.request)
+      .then(response => {
         if (response && response.status === 200 && response.type === 'basic') {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
         }
         return response;
-      });
-    }).catch(() => caches.match('/'))
+      })
+      .catch(() => caches.match(event.request))
   );
 });
