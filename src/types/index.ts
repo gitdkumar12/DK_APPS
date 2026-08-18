@@ -3,7 +3,23 @@
 // Phase 1 — Core Entity Contracts
 // ============================================================
 
-export type UserRole = 'ADMIN' | 'EMPLOYEE';
+export type UserRole = 'PRINCIPAL_ADMIN' | 'ADMIN' | 'EMPLOYEE';
+
+export interface ProjectDocument {
+  id: string;
+  name: string;      // "Work Order" | "Agreement" | "Completion Certificate" | "Receiving Letter" | "Other"
+  fileName: string;
+  fileType: string;  // "pdf" | "jpg" | "jpeg" | "png"
+  fileSize: number;
+  dataUrl: string;   // Base64 data URL
+  createdAt: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  divisions: string[];
+}
 
 export interface TicketComment {
   id: string;
@@ -22,13 +38,14 @@ export interface TicketComment {
 
 export interface User {
   id: string;
+  employeeId?: string; // Formatted ID e.g. GT-EMP-001
   name: string;
   email: string;
   password: string;
   phone?: string;
   role: UserRole;
   avatar?: string;
-  department: 'Architecture' | 'Valuation' | 'Admin' | 'Accounts';
+  department: string; // Dynamic department name
   joinDate: string;
   isActive: boolean;
   notifyEmail?: boolean;
@@ -47,6 +64,9 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   description?: string;
+  departmentId?: string; // Links to Department id or name
+  division?: string;     // Links to division string
+  documents?: ProjectDocument[];
 }
 
 export type TaskStatus = 'OPEN' | 'PENDING_REVIEW' | 'CLOSED';

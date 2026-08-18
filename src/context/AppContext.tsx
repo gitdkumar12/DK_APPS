@@ -8,6 +8,7 @@ interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   isAdmin: boolean;
+  isPrincipalAdmin: boolean;
   logout: () => void;
   refreshKey: number;
   refresh: () => void;
@@ -18,6 +19,7 @@ const AppContext = createContext<AppContextType>({
   currentUser: null,
   setCurrentUser: () => {},
   isAdmin: false,
+  isPrincipalAdmin: false,
   logout: () => {},
   refreshKey: 0,
   refresh: () => {},
@@ -62,7 +64,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       currentUser,
       setCurrentUser,
-      isAdmin: currentUser?.role === 'ADMIN',
+      isAdmin: currentUser?.role === 'ADMIN' || currentUser?.role === 'PRINCIPAL_ADMIN',
+      isPrincipalAdmin: currentUser?.role === 'PRINCIPAL_ADMIN',
       logout,
       refreshKey,
       refresh,

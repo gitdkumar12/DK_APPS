@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { LocalDbService } from '@/services/LocalDbService';
 import { ExportService } from '@/services/ExportService';
-import { Project, ProjectStatus } from '@/types';
-import { Plus, Download, X, CheckCircle, MapPin } from 'lucide-react';
+import { Project, ProjectStatus, ProjectDocument } from '@/types';
+import { Plus, Download, X, CheckCircle, MapPin, FileText, Trash } from 'lucide-react';
 
 const STATUS_MAP: Record<ProjectStatus, string> = {
   ACTIVE: 'badge-active',
@@ -23,18 +23,51 @@ function ProjectModal({
     totalValue: project?.totalValue ?? 0,
     status: project?.status ?? 'ACTIVE' as ProjectStatus,
     description: project?.description ?? '',
+    departmentId: project?.departmentId ?? '',
+    division: project?.division ?? '',
+    documents: project?.documents ?? [] as ProjectDocument[],
   });
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
+  const departments = LocalDbService.getDepartments();
+  const selectedDeptDivisions = departments.find(d => d.id === form.departmentId)?.divisions ?? [];
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const docUrl = reader.result as string;
+      const newDoc: ProjectDocument = {
+        id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        name: docType,
+        fileName: file.name,
+        fileType: file.name.split('.').pop() || '',
+        fileSize: file.size,
+        dataUrl: docUrl,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      // Keep only one file per document type, replace if already exists
+      const filteredDocs = (form.documents || []).filter(d => d.name !== docType);
+      set('documents', [...filteredDocs, newDoc]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeDoc = (docId: string) => {
+    set('documents', (form.documents || []).filter(d => d.id !== docId));
+  };
+
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: 650 }}>
         <div className="modal-header">
           <h2 className="modal-title">{project ? 'Edit Project' : 'New Project'}</h2>
           <button className="btn btn-icon btn-secondary" onClick={onClose}><X size={16} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); onSave(form); }}>
-          <div className="modal-body">
+          <div className="modal-body" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
             <div className="form-grid form-grid-2">
               <div className="form-group">
                 <label className="form-label">Project Name / Code</label>
@@ -45,6 +78,39 @@ function ProjectModal({
                 <input type="text" className="form-input" value={form.clientName} onChange={e => set('clientName', e.target.value)} placeholder="e.g. NRDA, CSIDC" required />
               </div>
             </div>
+
+            <div className="form-grid form-grid-2">
+              <div className="form-group">
+                <label className="form-label">Department *</label>
+                <select 
+                  className="form-select" 
+                  value={form.departmentId} 
+                  onChange={e => { set('departmentId', e.target.value); set('division', ''); }} 
+                  required
+                >
+                  <option value="">Select Department</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Division *</label>
+                <select 
+                  className="form-select" 
+                  value={form.division} 
+                  onChange={e => set('division', e.target.value)} 
+                  required 
+                  disabled={!form.departmentId}
+                >
+                  <option value="">Select Division</option>
+                  {selectedDeptDivisions.map((div: string) => (
+                    <option key={div} value={div}>{div}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Site Address</label>
               <input type="text" className="form-input" value={form.siteAddress} onChange={e => set('siteAddress', e.target.value)} placeholder="Full site address" />
@@ -73,6 +139,48 @@ function ProjectModal({
               <label className="form-label">Description / Notes</label>
               <textarea className="form-textarea" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Project details..." />
             </div>
+
+            {/* Document Upload Section */}
+            <div style={{ marginTop: 14, background: 'rgba(255,255,255,0.02)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>📁 Project Documents (PDF / JPG)</div>
+              
+              <div className="form-grid form-grid-2" style={{ gap: 10 }}>
+                {['Work Order', 'Agreement', 'Completion Certificate', 'Receiving Letter', 'Other'].map(type => (
+                  <div key={type} className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>{type}</label>
+                    <input 
+                      type="file" 
+                      className="form-input" 
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={e => handleFileUpload(e, type)} 
+                      style={{ fontSize: 11, padding: '4px 8px' }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {form.documents && form.documents.length > 0 && (
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Attached Files:</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                    {form.documents.map((d: ProjectDocument) => (
+                      <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '6px 10px', borderRadius: 6, fontSize: 11 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--accent-indigo-light)' }}>{d.name}:</span>
+                        <span style={{ color: 'var(--text-muted)', marginLeft: 6, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 280 }}>{d.fileName}</span>
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-danger" 
+                          onClick={() => removeDoc(d.id)} 
+                          style={{ padding: '2px 6px', fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}
+                        >
+                          <Trash size={10} /> Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -94,11 +202,18 @@ export default function ProjectsPage() {
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [filterDiv, setFilterDiv] = useState('');
 
   useEffect(() => { setProjects(LocalDbService.getProjects()); }, [refreshKey]);
 
+  const departments = LocalDbService.getDepartments();
+  const allDivisions = filterDept ? (departments.find(d => d.id === filterDept)?.divisions ?? []) : [];
+
   const filtered = projects.filter(p => {
     if (filterStatus && p.status !== filterStatus) return false;
+    if (filterDept && p.departmentId !== filterDept) return false;
+    if (filterDiv && p.division !== filterDiv) return false;
     if (search) {
       const s = search.toLowerCase();
       return p.name.toLowerCase().includes(s) || p.clientName.toLowerCase().includes(s) || p.siteLocation.toLowerCase().includes(s);
@@ -154,8 +269,20 @@ export default function ProjectsPage() {
                 type="text" className="filter-input"
                 placeholder="🔍 Search projects..."
                 value={search} onChange={e => setSearch(e.target.value)}
-                style={{ minWidth: 200 }}
+                style={{ minWidth: 160 }}
               />
+              <select className="filter-input" value={filterDept} onChange={e => { setFilterDept(e.target.value); setFilterDiv(''); }}>
+                <option value="">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+              <select className="filter-input" value={filterDiv} onChange={e => setFilterDiv(e.target.value)} disabled={!filterDept}>
+                <option value="">All Divisions</option>
+                {allDivisions.map((div: string) => (
+                  <option key={div} value={div}>{div}</option>
+                ))}
+              </select>
               <select className="filter-input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                 <option value="">All Status</option>
                 <option value="ACTIVE">Active</option>
@@ -181,6 +308,7 @@ export default function ProjectsPage() {
                     <th>Client</th>
                     <th>Site Location</th>
                     <th>Site Address</th>
+                    <th>Documents</th>
                     <th>Total Value</th>
                     <th>Status</th>
                     <th>Created</th>
@@ -194,6 +322,20 @@ export default function ProjectsPage() {
                       <td>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.name}</div>
                         {p.description && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{p.description}</div>}
+                        {(p.departmentId || p.division) && (
+                          <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                            {p.departmentId && (
+                              <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(99,102,241,0.12)', color: 'var(--accent-indigo-light)', fontWeight: 600 }}>
+                                {departments.find(d => d.id === p.departmentId)?.name || p.departmentId}
+                              </span>
+                            )}
+                            {p.division && (
+                              <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(16,185,129,0.12)', color: 'var(--accent-emerald)', fontWeight: 600 }}>
+                                {p.division}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td>{p.clientName}</td>
                       <td>
@@ -202,10 +344,29 @@ export default function ProjectsPage() {
                           {p.siteLocation}
                         </span>
                       </td>
-                      <td style={{ maxWidth: 180, fontSize: 12, color: 'var(--text-muted)' }}>
+                      <td style={{ maxWidth: 160, fontSize: 12, color: 'var(--text-muted)' }}>
                         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.siteAddress}>
                           {p.siteAddress}
                         </span>
+                      </td>
+                      <td>
+                        {p.documents && p.documents.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 100 }}>
+                            {p.documents.map((d: ProjectDocument) => (
+                              <a 
+                                key={d.id} 
+                                href={d.dataUrl} 
+                                download={d.fileName}
+                                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--accent-indigo-light)', textDecoration: 'none', fontWeight: 500 }}
+                                title={`Download ${d.fileName}`}
+                              >
+                                <FileText size={11} /> {d.name}
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>No docs</span>
+                        )}
                       </td>
                       <td style={{ fontWeight: 600, color: 'var(--accent-emerald)', fontFamily: 'Outfit' }}>
                         {fmt(p.totalValue)}

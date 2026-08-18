@@ -6,7 +6,7 @@ import {
   User, Project, Task, Bank, ValuationCase,
   RevenueRecord, DashboardStats, EmployeeMetrics,
   ExportFilter, TaskStatus, ValuationStatus, TicketComment,
-  AccountRecord, LeaveQuota, LeaveRequest, Holiday, LeaveStatus, VaultAsset
+  AccountRecord, LeaveQuota, LeaveRequest, Holiday, LeaveStatus, VaultAsset, Department
 } from '@/types';
 import { db } from '@/lib/firebase';
 import { 
@@ -24,16 +24,18 @@ import {
 const SEED_USERS: User[] = [
   {
     id: 'usr_admin_001',
+    employeeId: 'GT-EMP-001',
     name: 'Piyush Raj Verma',
     email: 'piyush@gtconsultancy.in',
     password: 'GT@Admin2026',
-    role: 'ADMIN',
+    role: 'PRINCIPAL_ADMIN',
     department: 'Admin',
     joinDate: '2020-01-15',
     isActive: true,
   },
   {
     id: 'usr_emp_001',
+    employeeId: 'GT-EMP-002',
     name: 'Aman Verma',
     email: 'aman@gtconsultancy.in',
     password: 'GT@Aman2026',
@@ -44,6 +46,7 @@ const SEED_USERS: User[] = [
   },
   {
     id: 'usr_emp_002',
+    employeeId: 'GT-EMP-003',
     name: 'Ravi Kumar',
     email: 'ravi@gtconsultancy.in',
     password: 'GT@Ravi2026',
@@ -54,6 +57,7 @@ const SEED_USERS: User[] = [
   },
   {
     id: 'usr_emp_003',
+    employeeId: 'GT-EMP-004',
     name: 'Sneha Patel',
     email: 'sneha@gtconsultancy.in',
     password: 'GT@Sneha2026',
@@ -64,6 +68,7 @@ const SEED_USERS: User[] = [
   },
   {
     id: 'usr_acc_001',
+    employeeId: 'GT-EMP-005',
     name: 'Neha Sharma',
     email: 'neha@gtconsultancy.in',
     password: 'GT@Neha2026',
@@ -72,6 +77,29 @@ const SEED_USERS: User[] = [
     joinDate: '2021-08-01',
     isActive: true,
   },
+];
+
+const SEED_DEPARTMENTS: Department[] = [
+  {
+    id: 'dept_arch',
+    name: 'Architecture',
+    divisions: ["Approval Drawing", "Layout Planning", "Section + Site Level", "Elevation", "Electrical Dwg", "Chowk Development", "Interior Design", "Other"]
+  },
+  {
+    id: 'dept_val',
+    name: 'Valuation',
+    divisions: ["Bank Valuation", "Retail Valuation", "Commercial Valuation", "Industrial Valuation", "Agricultural Valuation", "Other"]
+  },
+  {
+    id: 'dept_admin',
+    name: 'Admin',
+    divisions: ["Operations", "Human Resources", "General Admin"]
+  },
+  {
+    id: 'dept_acc',
+    name: 'Accounts',
+    divisions: ["Payroll", "Invoicing", "Taxation (GST)", "General Ledger"]
+  }
 ];
 
 const SEED_PROJECTS: Project[] = [
@@ -367,6 +395,7 @@ const KEYS = {
   leaveRequests: 'gtc_leave_requests',
   holidays: 'gtc_holidays',
   currentUser: 'gtc_current_user',
+  departments: 'gtc_departments',
 };
 
 // ─── In-Memory Cache Variables ──────────────────────────────
@@ -380,6 +409,7 @@ let cachedAccounts: AccountRecord[] = [];
 let cachedLeaveQuotas: LeaveQuota[] = [];
 let cachedLeaveRequests: LeaveRequest[] = [];
 let cachedHolidays: Holiday[] = [];
+let cachedDepartments: Department[] = [];
 
 let isSyncInitialized = false;
 
@@ -413,6 +443,7 @@ export class LocalDbService {
         const batch = writeBatch(db);
         
         SEED_USERS.forEach(u => batch.set(doc(db, KEYS.users, u.id), u));
+        SEED_DEPARTMENTS.forEach(d => batch.set(doc(db, KEYS.departments, d.id), d));
         SEED_PROJECTS.forEach(p => batch.set(doc(db, KEYS.projects, p.id), p));
         SEED_TASKS.forEach(t => batch.set(doc(db, KEYS.tasks, t.id), t));
         SEED_BANKS.forEach(b => batch.set(doc(db, KEYS.banks, b.id), b));
@@ -449,6 +480,11 @@ export class LocalDbService {
         cachedUsers = snap.docs.map(d => d.data() as User);
         onSync();
       }, err => console.error('Users sync error:', err));
+
+      onSnapshot(collection(db, KEYS.departments), (snap) => {
+        cachedDepartments = snap.docs.map(d => d.data() as Department);
+        onSync();
+      }, err => console.error('Departments sync error:', err));
 
       onSnapshot(collection(db, KEYS.projects), (snap) => {
         cachedProjects = snap.docs.map(d => d.data() as Project);
@@ -528,6 +564,16 @@ export class LocalDbService {
   }
 
   static addUser(user: User): void {
+    if (!user.employeeId) {
+      // Find the next available number sequence from cachedUsers (e.g. GT-EMP-006)
+      const empUsers = (cachedUsers.length > 0 ? cachedUsers : SEED_USERS).filter(u => u.employeeId && u.employeeId.startsWith('GT-EMP-'));
+      let nextNum = empUsers.length + 1;
+      // Double check uniqueness
+      while (empUsers.some(u => u.employeeId === `GT-EMP-${String(nextNum).padStart(3, '0')}`)) {
+        nextNum++;
+      }
+      user.employeeId = `GT-EMP-${String(nextNum).padStart(3, '0')}`;
+    }
     cachedUsers = [...cachedUsers.filter(u => u.id !== user.id), user];
     setDoc(doc(db, KEYS.users, user.id), user).catch(err => console.error('Error adding user:', err));
   }
@@ -535,6 +581,27 @@ export class LocalDbService {
   static updateUser(updated: User): void {
     cachedUsers = cachedUsers.map(u => u.id === updated.id ? updated : u);
     setDoc(doc(db, KEYS.users, updated.id), updated).catch(err => console.error('Error updating user:', err));
+  }
+
+  // ── Departments ────────────────────────────────────────────
+  
+  static getDepartments(): Department[] {
+    return cachedDepartments.length > 0 ? cachedDepartments : SEED_DEPARTMENTS;
+  }
+
+  static addDepartment(dept: Department): void {
+    cachedDepartments = [...cachedDepartments.filter(d => d.id !== dept.id), dept];
+    setDoc(doc(db, KEYS.departments, dept.id), dept).catch(err => console.error('Error adding department:', err));
+  }
+
+  static updateDepartment(updated: Department): void {
+    cachedDepartments = cachedDepartments.map(d => d.id === updated.id ? updated : d);
+    setDoc(doc(db, KEYS.departments, updated.id), updated).catch(err => console.error('Error updating department:', err));
+  }
+
+  static deleteDepartment(id: string): void {
+    cachedDepartments = cachedDepartments.filter(d => d.id !== id);
+    deleteDoc(doc(db, KEYS.departments, id)).catch(err => console.error('Error deleting department:', err));
   }
 
   // ── Projects ──────────────────────────────────────────────
