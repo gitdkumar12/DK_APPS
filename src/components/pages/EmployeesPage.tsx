@@ -600,7 +600,7 @@ export default function EmployeesPage() {
             {filteredUsers.map(user => {
               const m = metrics.find(x => x.userId === user.id);
               const revealed = revealedPasswords.has(user.id);
-              const isPiyush = user.email.toLowerCase() === 'piyush@gtconsultancy.in';
+              const isPiyush = user.email.toLowerCase() === 'gtdsarchitect@gmail.com';
 
               return (
                 <div key={user.id} className="card" style={{ opacity: user.isActive ? 1 : 0.6 }}>

@@ -6,7 +6,7 @@ import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, Copy, Chec
 
 // ── Credentials info for the login page ──────────────────────
 const CREDENTIALS = [
-  { role: 'Admin', name: 'Piyush Raj Verma', email: 'piyush@gtconsultancy.in', password: 'GT@Admin2026', icon: '👑' },
+  { role: 'Admin', name: 'Piyush Raj Verma', email: 'gtdsarchitect@gmail.com', password: 'GT@Admin2026', icon: '👑' },
   { role: 'Employee', name: 'Aman Verma', email: 'aman@gtconsultancy.in', password: 'GT@Aman2026', icon: '📐' },
   { role: 'Employee', name: 'Ravi Kumar', email: 'ravi@gtconsultancy.in', password: 'GT@Ravi2026', icon: '🏦' },
   { role: 'Employee', name: 'Sneha Patel', email: 'sneha@gtconsultancy.in', password: 'GT@Sneha2026', icon: '🏗️' },

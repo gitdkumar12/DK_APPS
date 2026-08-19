@@ -27,7 +27,7 @@ const SEED_USERS: User[] = [
     id: 'usr_admin_001',
     employeeId: 'GT-EMP-001',
     name: 'Piyush Raj Verma',
-    email: 'piyush@gtconsultancy.in',
+    email: 'gtdsarchitect@gmail.com',
     password: 'GT@Admin2026',
     role: 'PRINCIPAL_ADMIN',
     department: 'Admin',
