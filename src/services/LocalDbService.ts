@@ -8,6 +8,7 @@ import {
   ExportFilter, TaskStatus, ValuationStatus, TicketComment,
   AccountRecord, LeaveQuota, LeaveRequest, Holiday, LeaveStatus, VaultAsset, Department
 } from '@/types';
+import { EmailService } from './EmailService';
 import { db } from '@/lib/firebase';
 import { 
   collection, 
@@ -638,11 +639,25 @@ export class LocalDbService {
   static addTask(task: Task): void {
     cachedTasks = [...cachedTasks.filter(t => t.id !== task.id), task];
     setDoc(doc(db, KEYS.tasks, task.id), task).catch(err => console.error('Error adding task:', err));
+    
+    // Send automated email alert
+    const assignedUser = this.getUsers().find(u => u.id === task.assignedTo);
+    if (assignedUser) {
+      EmailService.sendTaskNotification(assignedUser, task, 'created');
+    }
   }
 
   static updateTask(updated: Task): void {
+    const oldTask = cachedTasks.find(t => t.id === updated.id);
     cachedTasks = cachedTasks.map(t => t.id === updated.id ? updated : t);
     setDoc(doc(db, KEYS.tasks, updated.id), updated).catch(err => console.error('Error updating task:', err));
+    
+    // Send automated email alert
+    const assignedUser = this.getUsers().find(u => u.id === updated.assignedTo);
+    if (assignedUser) {
+      const action = oldTask && oldTask.status !== updated.status && updated.status === 'CLOSED' ? 'closed' : 'updated';
+      EmailService.sendTaskNotification(assignedUser, updated, action);
+    }
   }
 
   static deleteTask(id: string): void {
