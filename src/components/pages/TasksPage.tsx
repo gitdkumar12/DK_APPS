@@ -417,6 +417,25 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
     refresh();
   };
 
+  const handleWhatsAppShare = (task: Task) => {
+    const allUsers = LocalDbService.getUsers();
+    const employee = allUsers.find(e => e.id === task.assignedTo);
+    const phone = employee?.phone ? employee.phone.replace(/[^0-9]/g, '') : '';
+    
+    // Add country code if it doesn't start with one (assuming India +91)
+    const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
+
+    const message = `*G.T. Design Studio Portal - Task Update* 📋\n\n` +
+                    `*Project:* ${task.projectName}\n` +
+                    `*Task:* ${task.majorTask}\n` +
+                    `*Target Date:* ${task.targetClosingDate} (${task.targetClosingDay})\n` +
+                    `*Remarks:* ${task.remarks || 'No remarks'}\n\n` +
+                    `Please check the portal at https://gtdsarchitect.com/ to update status.`;
+                    
+    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   const handleExport = () => {
     ExportService.exportTasks(filtered);
   };
@@ -571,6 +590,16 @@ export default function TasksPage({ myTasksOnly = false }: TasksPageProps) {
                               onClick={() => { setEditTask(t); setShowModal(true); }}
                               title="Edit"
                             >Edit</button>
+                            {isAdmin && (
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ background: 'rgba(37,211,102,0.15)', color: '#25D366', border: '1px solid rgba(37,211,102,0.25)', fontWeight: 600 }}
+                                onClick={() => handleWhatsAppShare(t)}
+                                title="Share via WhatsApp"
+                              >
+                                WhatsApp
+                              </button>
+                            )}
                             {t.status === 'OPEN' && (isAdmin || t.assignedTo === currentUser?.id) && (
                               <button className="btn btn-sm" style={{ background: 'rgba(139,92,246,0.15)', color: 'var(--accent-violet)', border: '1px solid rgba(139,92,246,0.3)' }}
                                 onClick={() => handleMarkReview(t)}>
